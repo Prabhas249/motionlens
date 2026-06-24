@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, mkdtemp } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { tmpdir } from "node:os";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -125,6 +126,105 @@ function formatSpec(bp: Blueprint): string {
     .join("\n");
 }
 
+type ToolContent = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
+
+// Record a live URL locally with a headless browser → returns the .webm bytes.
+async function recordUrl(
+  url: string,
+  interaction: "load" | "scroll",
+  seconds: number,
+  viewport: { width: number; height: number },
+): Promise<Buffer> {
+  const { chromium } = await import("playwright");
+  const dir = await mkdtemp(join(tmpdir(), "ml-rec-"));
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({
+      viewport,
+      deviceScaleFactor: 2,
+      recordVideo: { dir, size: viewport },
+    });
+    const page = await context.newPage();
+    await page.goto(url, { waitUntil: "load", timeout: 30000 });
+    await page.waitForTimeout(800); // let entrance animations begin
+    if (interaction === "scroll") {
+      await page.evaluate(async (ms: number) => {
+        await new Promise<void>((resolve) => {
+          const start = performance.now();
+          const max = Math.max(0, document.body.scrollHeight - window.innerHeight);
+          const tick = () => {
+            const t = Math.min(1, (performance.now() - start) / ms);
+            window.scrollTo(0, max * t);
+            if (t < 1) requestAnimationFrame(tick);
+            else resolve();
+          };
+          tick();
+        });
+      }, seconds * 1000);
+    } else {
+      await page.waitForTimeout(seconds * 1000);
+    }
+    const video = page.video();
+    await context.close(); // finalizes the recording
+    const vpath = video ? await video.path() : null;
+    if (!vpath) throw new Error("recording produced no video");
+    return await readFile(vpath);
+  } finally {
+    await browser.close();
+  }
+}
+
+// Shared: analyze a video buffer → write code/blueprint files → build the tool result.
+async function runAnalysis(
+  buf: Buffer,
+  name: string,
+  mode: string,
+  fw: string,
+  wantStoryboard: boolean,
+  saveDir: string | undefined,
+): Promise<{ content: ToolContent[] }> {
+  const { blueprint, frames } = await getAnalysis(buf, name, mode, wantStoryboard);
+  const code = await getCode(blueprint, fw);
+
+  const dir = saveDir || join(process.cwd(), "motionlens-output");
+  await mkdir(dir, { recursive: true });
+  const ext = fw === "CSS" ? "css" : fw === "GSAP" ? "js" : "tsx";
+  const codeFile = join(dir, `MotionLensAnimation.${ext}`);
+  const specFile = join(dir, "BLUEPRINT.md");
+  const jsonFile = join(dir, "blueprint.json");
+  const spec = formatSpec(blueprint);
+  await writeFile(codeFile, code || "// no code generated");
+  await writeFile(specFile, spec);
+  await writeFile(jsonFile, JSON.stringify(blueprint, null, 2));
+
+  const preview = code ? code.split("\n").slice(0, 28).join("\n") : "";
+  const text = [
+    spec,
+    `\n## Saved (full files — no truncation)`,
+    `- ${fw} code → ${codeFile}`,
+    `- Spec → ${specFile}`,
+    `- Blueprint JSON → ${jsonFile}`,
+    preview ? `\n## Code preview (first 28 lines — full file saved above)\n\`\`\`${ext}\n${preview}\n…\n\`\`\`` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const content: ToolContent[] = [{ type: "text", text }];
+  if (wantStoryboard && frames.length) {
+    content.push({ type: "text", text: `## Storyboard (${frames.length} keyframes)` });
+    frames.forEach((f, i) => {
+      const callouts = (f.annotations ?? []).map((a) => a.label).filter(Boolean);
+      const caption =
+        `**Keyframe ${i + 1}**${f.label ? ` — ${f.label}` : ""}` +
+        (callouts.length ? `\nAnnotations: ${callouts.join("; ")}` : "");
+      content.push({ type: "text", text: caption });
+      const m = (f.img ?? "").match(/^data:(image\/[\w.+-]+);base64,(.+)$/s);
+      if (m) content.push({ type: "image", data: m[2], mimeType: m[1] });
+    });
+  }
+  return { content };
+}
+
 const server = new McpServer({ name: "motionlens", version: "0.1.0" });
 
 server.tool(
@@ -159,61 +259,16 @@ server.tool(
       ),
   },
   async ({ path, mode, framework, include_storyboard, save_dir }) => {
-    const fw = framework ?? "Framer Motion";
-    const wantStoryboard = include_storyboard ?? true;
     try {
       const buf = await readFile(path);
-      const { blueprint, frames } = await getAnalysis(
+      return await runAnalysis(
         buf,
         basename(path) || "clip.mp4",
         mode ?? "precision",
-        wantStoryboard,
+        framework ?? "Framer Motion",
+        include_storyboard ?? true,
+        save_dir,
       );
-      const code = await getCode(blueprint, fw);
-
-      // Always write the full code + spec to files — long code truncates if returned inline.
-      const dir = save_dir || join(process.cwd(), "motionlens-output");
-      await mkdir(dir, { recursive: true });
-      const ext = fw === "CSS" ? "css" : fw === "GSAP" ? "js" : "tsx";
-      const codeFile = join(dir, `MotionLensAnimation.${ext}`);
-      const specFile = join(dir, "BLUEPRINT.md");
-      const jsonFile = join(dir, "blueprint.json");
-      const spec = formatSpec(blueprint);
-      await writeFile(codeFile, code || "// no code generated");
-      await writeFile(specFile, spec);
-      await writeFile(jsonFile, JSON.stringify(blueprint, null, 2));
-
-      const preview = code ? code.split("\n").slice(0, 28).join("\n") : "";
-      const text = [
-        spec,
-        `\n## Saved (full files — no truncation)`,
-        `- ${fw} code → ${codeFile}`,
-        `- Spec → ${specFile}`,
-        `- Blueprint JSON → ${jsonFile}`,
-        preview
-          ? `\n## Code preview (first 28 lines — full file saved above)\n\`\`\`${ext}\n${preview}\n…\n\`\`\``
-          : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-      const content: Array<
-        { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
-      > = [{ type: "text", text }];
-
-      if (wantStoryboard && frames.length) {
-        content.push({ type: "text", text: `## Storyboard (${frames.length} keyframes)` });
-        frames.forEach((f, i) => {
-          const callouts = (f.annotations ?? []).map((a) => a.label).filter(Boolean);
-          const caption =
-            `**Keyframe ${i + 1}**${f.label ? ` — ${f.label}` : ""}` +
-            (callouts.length ? `\nAnnotations: ${callouts.join("; ")}` : "");
-          content.push({ type: "text", text: caption });
-          const m = (f.img ?? "").match(/^data:(image\/[\w.+-]+);base64,(.+)$/s);
-          if (m) content.push({ type: "image", data: m[2], mimeType: m[1] });
-        });
-      }
-      return { content };
     } catch (e) {
       return {
         isError: true,
@@ -225,21 +280,47 @@ server.tool(
 
 server.tool(
   "analyze_url",
-  "Record a live website/app at a URL and analyze its animation into a Motion Blueprint + code. (Not yet enabled — records locally via a headless browser; coming next.)",
+  "Record a live website/app at a URL on THIS machine (headless browser) and analyze its animation into a Motion Blueprint + code, writing files like analyze_video. Best for AUTO-PLAYING motion (page-load / hero entrances, carousels, marquees, loaders) and scroll-triggered reveals. Tap/click-driven interactions won't be captured — record those manually and use analyze_video.",
   {
-    url: z.string().describe("The URL to record and analyze."),
+    url: z.string().describe("The URL to record and analyze, e.g. https://linear.app."),
+    interaction: z
+      .enum(["load", "scroll"])
+      .optional()
+      .describe(
+        "'load' (default) records the page-load / auto-playing animation; 'scroll' slowly scrolls top→bottom to capture scroll-triggered reveals & parallax.",
+      ),
+    seconds: z.number().optional().describe("Recording length in seconds (default 10, clamped 3–30)."),
+    viewport: z
+      .enum(["desktop", "mobile"])
+      .optional()
+      .describe("'desktop' = 1280×800 (default), 'mobile' = 390×844."),
+    mode: z.enum(["standard", "annotated", "precision"]).optional().describe("Analysis depth (default precision)."),
+    framework: z
+      .enum(["Framer Motion", "CSS", "GSAP", "Tailwind"])
+      .optional()
+      .describe("Target framework for the code (default Framer Motion)."),
+    include_storyboard: z.boolean().optional().describe("Return storyboard keyframe images (default true)."),
+    save_dir: z.string().optional().describe("Where to write the code + blueprint files (default ./motionlens-output)."),
   },
-  async ({ url }) => {
-    return {
-      content: [
-        {
-          type: "text",
-          text:
-            `analyze_url isn't enabled yet (it needs local browser recording via Playwright). ` +
-            `For now, record ${url} yourself and use analyze_video with the saved clip.`,
-        },
-      ],
-    };
+  async ({ url, interaction, seconds, viewport, mode, framework, include_storyboard, save_dir }) => {
+    try {
+      const vp = viewport === "mobile" ? { width: 390, height: 844 } : { width: 1280, height: 800 };
+      const secs = Math.min(30, Math.max(3, seconds ?? 10));
+      const buf = await recordUrl(url, interaction ?? "load", secs, vp);
+      return await runAnalysis(
+        buf,
+        "recording.webm",
+        mode ?? "precision",
+        framework ?? "Framer Motion",
+        include_storyboard ?? true,
+        save_dir,
+      );
+    } catch (e) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: `MotionLens analyze_url failed: ${(e as Error).message}` }],
+      };
+    }
   },
 );
 
