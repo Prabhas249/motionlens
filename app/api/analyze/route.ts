@@ -159,6 +159,11 @@ MOTION PRECISION — report ONLY what you actually see. Inventing a motion is WO
   SMALL element, or one that arrives LATE (flies in near the end, after the rest has settled) is easy to miss —
   scan the FINAL settled frame specifically for late or subtle arrivals and give each its own motion entry. If
   you half-see one but cannot confirm it, include it at confidence:"low" inferred:true rather than dropping it.
+- ENTRY / EXIT TRAJECTORY — for any element that ENTERS or LEAVES, say WHERE it comes from / goes to: an
+  off-screen edge (flies IN from the LEFT / right / top / bottom), from behind another element, or fades in
+  PLACE. "flies in from the left and crosses to rest near the title" is a DIFFERENT motion from "fades in
+  where it ends" — capture the PATH (start position -> end position) in from/to, not just the fade. If a sharp
+  keyframe shows the element partway across the screen, use it to pin where it entered from.
 - Determine easing from what you see: if the element overshoots/bounces past its end then settles, label it
   spring / ease-out-back; if it settles smoothly, ease-out / ease-in-out / linear. Report linear or
   no-overshoot when there is none — do NOT default to "spring". A SETTLE span in the motion-energy hint
@@ -661,6 +666,37 @@ async function motionEnergy(videoPath: string): Promise<EnergyResult | null> {
   }
 }
 
+// Adaptive Keyframe Fusion — pick the few EVENT-based moments worth a sharp full-res still: the initial
+// state, each BURST's onset + peak, each SETTLE, and the final frame. Event-based beats time-based — 5-8 of
+// these are worth 100 uniform screenshots. Reuses the motion-energy spans; no new detector.
+function pickKeyframeTimes(energy: EnergyResult | null, dur: number, max: number): number[] {
+  const lo = 0.02;
+  const hi = Math.max(0.1, dur - 0.05);
+  const clamp = (x: number) => Math.max(lo, Math.min(hi, x));
+  const times: number[] = [clamp(dur * 0.03), clamp(dur * 0.97)]; // initial + final settled
+  if (energy?.spans?.length) {
+    for (const s of energy.spans) {
+      if (s.kind === "BURST") {
+        times.push(clamp(s.t0)); // onset — entry / stack forming
+        const within = energy.samples.filter((p) => p.t >= s.t0 && p.t <= s.t1);
+        if (within.length) times.push(clamp(within.reduce((a, b) => (b.e > a.e ? b : a), within[0]).t)); // peak burst
+      } else if (s.kind === "SETTLE") {
+        times.push(clamp((s.t0 + s.t1) / 2)); // a held / settled state
+      }
+    }
+  } else {
+    for (const f of [0.2, 0.4, 0.6, 0.8]) times.push(clamp(dur * f)); // no energy → uniform fallback
+  }
+  const sorted = [...times].sort((a, b) => a - b);
+  const out: number[] = [];
+  for (const t of sorted) if (!out.length || t - out[out.length - 1] >= 0.2) out.push(t); // drop near-dupes
+  if (out.length > max) {
+    const step = (out.length - 1) / (max - 1); // keep the most spread-out
+    return Array.from({ length: max }, (_, i) => out[Math.round(i * step)]);
+  }
+  return out;
+}
+
 // Deterministic repeat/reverse detector — pure math over the motion-energy curve, no model, no new deps.
 // Demos often perform the same interaction twice or forward-then-back; this finds that so the engine
 // describes it ONCE and the storyboard skips the duplicate panel (deterministically, not via the prompt).
@@ -1070,6 +1106,8 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     // costs the same as old 6fps×20s but doubles temporal resolution on the moment that matters).
     const fps = mode === "precision" ? 12 : mode === "annotated" ? 8 : 6;
     const videoPart = { fileData: { fileUri: uri, mimeType: mime }, videoMetadata: { fps } };
+    // Adaptive Keyframe Fusion: sharp full-res stills at the energy events, filled in after energy resolves.
+    let keyframeParts: { inlineData: { mimeType: string; data: string } }[] = [];
     const gen = async (prompt: string, schema?: object, opts?: { noVideo?: boolean }) => {
       const config: Record<string, unknown> = { maxOutputTokens: 16384 };
       if (schema) {
@@ -1080,7 +1118,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       // full 12fps video, which is the most expensive part of each call. noVideo drops it = a full pass saved.
       const parts = opts?.noVideo
         ? [{ text: prompt }]
-        : [videoPart, ...(screenshotPart ? [screenshotPart] : []), { text: prompt }];
+        : [videoPart, ...keyframeParts, ...(screenshotPart ? [screenshotPart] : []), { text: prompt }];
       const run = (cfg: Record<string, unknown>) =>
         ai.models.generateContent({
           model: MODEL,
@@ -1163,13 +1201,37 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       ? `\n\nMOTION-ENERGY HINT — measured from the pixels, a guide for WHEN motion happens (not what). BURST = likely a discrete animation event; STEADY = sustained motion = likely a continuous/looping animation (treat as ONE looping behaviour, never per-cycle); SETTLE = little change / held. Use it to place and merge events — but it is only a hint: if it conflicts with what you actually SEE in the video, trust your eyes.\n${energyRes.text}`
         + (rep.hint ? `\n\nREPEAT/REVERSE (measured from the pixels): ${rep.hint}` : "")
       : "";
+    // --- Adaptive Keyframe Fusion: sharp full-res stills at the energy events, fused into the video passes ---
+    let keyframeContext = "";
+    {
+      const dur = await getDuration(tmpPath);
+      const maxKf = mode === "precision" ? 8 : mode === "annotated" ? 6 : 4;
+      const kbase = safeName.replace(/[^a-z0-9]/gi, "");
+      const times = pickKeyframeTimes(energyRes, dur, maxKf);
+      const grabbed = await Promise.all(
+        times.map((t, i) => grabFile(tmpPath!, t, join(tmpdir(), `ml-kf-${kbase}-${i}.jpg`))),
+      );
+      const kept: { t: number; path: string }[] = [];
+      for (let i = 0; i < grabbed.length; i++) if (grabbed[i]) kept.push({ t: times[i], path: grabbed[i]! });
+      if (kept.length) {
+        keyframeParts = await Promise.all(
+          kept.map(async (k) => ({
+            inlineData: { mimeType: "image/jpeg", data: (await readFile(k.path)).toString("base64") },
+          })),
+        );
+        for (const k of kept) await unlink(k.path).catch(() => {}); // base64 captured; files no longer needed
+        const stamps = kept.map((k) => `${k.t.toFixed(2)}s`).join(", ");
+        keyframeContext = `\n\nSHARP KEYFRAMES PROVIDED — ${kept.length} high-resolution stills are attached (after the video), captured at the key motion moments (${stamps}). They are sharper than the compressed video frames. USE THEM to read SMALL or LOW-CONTRAST elements the video blurs (e.g. a pale shape on a light background), the EXACT intermediate states (e.g. a mid-burst pile BEFORE it scatters), and precise colors / sizes / positions / spacing. The VIDEO stays the source of truth for MOTION, ORDER and TIMING; these keyframes are the source of truth for APPEARANCE at those instants — when the blurry video and a sharp keyframe disagree on appearance, trust the keyframe. The stills are in chronological order.`;
+      }
+    }
+
     let blueprintText: string;
     if (mode === "precision") {
       // 2-pass: Pass 1 extract → Pass 2 re-watch, verify vs video, output corrected final.
-      const draft = await gen(PROMPT + userContext + screenshotContext + energyBlock, BLUEPRINT_SCHEMA);
-      blueprintText = await gen(`${VERIFY_FINALIZE_PROMPT}${energyBlock}\n\nDraft Blueprint to verify & correct:\n${draft}`, BLUEPRINT_SCHEMA);
+      const draft = await gen(PROMPT + userContext + screenshotContext + keyframeContext + energyBlock, BLUEPRINT_SCHEMA);
+      blueprintText = await gen(`${VERIFY_FINALIZE_PROMPT}${keyframeContext}${energyBlock}\n\nDraft Blueprint to verify & correct:\n${draft}`, BLUEPRINT_SCHEMA);
     } else {
-      blueprintText = await gen(PROMPT + userContext + screenshotContext + energyBlock, BLUEPRINT_SCHEMA);
+      blueprintText = await gen(PROMPT + userContext + screenshotContext + keyframeContext + energyBlock, BLUEPRINT_SCHEMA);
     }
     const blueprint = JSON.parse(blueprintText || "{}");
 
