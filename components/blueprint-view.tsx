@@ -373,7 +373,7 @@ export function BlueprintView({
               </div>
               {genning && !code && (
                 <div className="flex items-center gap-2 rounded-lg border bg-card p-3 text-xs text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin" /> Generating {framework} code…
+                  <Loader2 className="size-3.5 animate-spin" /> Generating + refining {framework} code…
                 </div>
               )}
               {code && (
