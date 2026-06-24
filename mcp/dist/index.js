@@ -157,11 +157,15 @@ server.tool("analyze_video", "Analyze a local UI-animation video (mp4/mov/webm).
         const content = [{ type: "text", text }];
         if (wantStoryboard && frames.length) {
             content.push({ type: "text", text: `## Storyboard (${frames.length} keyframes)` });
-            for (const f of frames) {
+            frames.forEach((f, i) => {
+                const callouts = (f.annotations ?? []).map((a) => a.label).filter(Boolean);
+                const caption = `**Keyframe ${i + 1}**${f.label ? ` — ${f.label}` : ""}` +
+                    (callouts.length ? `\nAnnotations: ${callouts.join("; ")}` : "");
+                content.push({ type: "text", text: caption });
                 const m = (f.img ?? "").match(/^data:(image\/[\w.+-]+);base64,(.+)$/s);
                 if (m)
                     content.push({ type: "image", data: m[2], mimeType: m[1] });
-            }
+            });
         }
         return { content };
     }

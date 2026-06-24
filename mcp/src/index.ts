@@ -28,7 +28,7 @@ const EXT_MIME: Record<string, string> = { mp4: "video/mp4", mov: "video/quickti
 const mimeFor = (name: string) =>
   EXT_MIME[name.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? ""] ?? "video/mp4";
 
-type Frame = { img?: string; label?: string };
+type Frame = { img?: string; label?: string; annotations?: Array<{ label?: string }> };
 
 // POST to /api/analyze and read the NDJSON stream. Always grab the blueprint; if `includeStoryboard`,
 // also wait for the frames line (storyboard keyframes), otherwise abort early for speed.
@@ -203,10 +203,15 @@ server.tool(
 
       if (wantStoryboard && frames.length) {
         content.push({ type: "text", text: `## Storyboard (${frames.length} keyframes)` });
-        for (const f of frames) {
+        frames.forEach((f, i) => {
+          const callouts = (f.annotations ?? []).map((a) => a.label).filter(Boolean);
+          const caption =
+            `**Keyframe ${i + 1}**${f.label ? ` — ${f.label}` : ""}` +
+            (callouts.length ? `\nAnnotations: ${callouts.join("; ")}` : "");
+          content.push({ type: "text", text: caption });
           const m = (f.img ?? "").match(/^data:(image\/[\w.+-]+);base64,(.+)$/s);
           if (m) content.push({ type: "image", data: m[2], mimeType: m[1] });
-        }
+        });
       }
       return { content };
     } catch (e) {
