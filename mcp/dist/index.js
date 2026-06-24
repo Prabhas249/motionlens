@@ -195,8 +195,7 @@ server.tool("analyze_video", "Analyze a local UI-animation video (mp4/mov/webm).
     mode: z
         .enum(["standard", "annotated", "precision"])
         .optional()
-        .describe("Analysis depth (default 'precision'). Pick 'standard' when the user wants it FAST/quick (~30s, core motion only); " +
-        "'annotated' when they want a storyboard with callouts; 'precision' when they want the most ACCURATE / final recreation (multi-pass, ~1-2 min)."),
+        .describe("Analysis depth. DEFAULT 'standard' (fast, ~40s, core motion). Use 'precision' (multi-pass, ~1-2 min, most ACCURATE — best for the final recreation) ONLY when the user explicitly asks (e.g. says 'precise', 'precision', 'final', 'most accurate'). 'annotated' adds a callout storyboard."),
     framework: z
         .enum(["Framer Motion", "CSS", "GSAP", "Tailwind"])
         .optional()
@@ -212,7 +211,7 @@ server.tool("analyze_video", "Analyze a local UI-animation video (mp4/mov/webm).
 }, async ({ path, mode, framework, include_storyboard, save_dir }) => {
     try {
         const buf = await readFile(path);
-        return await runAnalysis(buf, basename(path) || "clip.mp4", mode ?? "precision", framework ?? "Framer Motion", include_storyboard ?? true, save_dir);
+        return await runAnalysis(buf, basename(path) || "clip.mp4", mode ?? "standard", framework ?? "Framer Motion", include_storyboard ?? true, save_dir);
     }
     catch (e) {
         return {
@@ -232,7 +231,10 @@ server.tool("analyze_url", "Record a live website/app at a URL on THIS machine (
         .enum(["desktop", "mobile"])
         .optional()
         .describe("'desktop' = 1280×800 (default), 'mobile' = 390×844."),
-    mode: z.enum(["standard", "annotated", "precision"]).optional().describe("Analysis depth (default precision)."),
+    mode: z
+        .enum(["standard", "annotated", "precision"])
+        .optional()
+        .describe("Analysis depth. DEFAULT 'standard' (fast ~40s). Use 'precision' (~2min, most accurate) ONLY when the user asks for it."),
     framework: z
         .enum(["Framer Motion", "CSS", "GSAP", "Tailwind"])
         .optional()
@@ -244,7 +246,7 @@ server.tool("analyze_url", "Record a live website/app at a URL on THIS machine (
         const vp = viewport === "mobile" ? { width: 390, height: 844 } : { width: 1280, height: 800 };
         const secs = Math.min(30, Math.max(3, seconds ?? 10));
         const buf = await recordUrl(url, interaction ?? "load", secs, vp);
-        return await runAnalysis(buf, "recording.webm", mode ?? "precision", framework ?? "Framer Motion", include_storyboard ?? true, save_dir);
+        return await runAnalysis(buf, "recording.webm", mode ?? "standard", framework ?? "Framer Motion", include_storyboard ?? true, save_dir);
     }
     catch (e) {
         return {
