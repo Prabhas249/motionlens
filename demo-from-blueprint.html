@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MotionLens — built from the Blueprint</title>
+<style>
+  html, body {
+    margin: 0; height: 100%;
+    background: #0a0a0a; overflow: hidden;
+    cursor: crosshair; font-family: system-ui, sans-serif; color: #444;
+  }
+  .hint {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 18px; letter-spacing: 0.5px;
+    user-select: none; pointer-events: none;
+  }
+  .tag {
+    position: fixed; bottom: 16px; left: 16px;
+    font-size: 12px; color: #333; user-select: none;
+  }
+  .dash {
+    position: fixed; width: 3px; height: 14px;
+    background: #ff3b30; border-radius: 2px;
+    transform-origin: center; pointer-events: none;
+    will-change: transform, opacity;
+  }
+</style>
+</head>
+<body>
+  <div class="hint">click anywhere &#10022;</div>
+  <div class="tag">Built by an AI agent from MotionLens' Blueprint — compare to your clip.</div>
+  <script>
+    // Implemented straight from the Motion Blueprint:
+    // "5 red radial dashes burst outward, shrink, and fade to 0 opacity in 600ms on click."
+    const N = 5;
+    function burst(x, y) {
+      for (let i = 0; i < N; i++) {
+        const angle = (360 / N) * i;
+        const d = document.createElement("div");
+        d.className = "dash";
+        d.style.left = x + "px";
+        d.style.top = y + "px";
+        document.body.appendChild(d);
+        const anim = d.animate(
+          [
+            { transform: `translate(-50%,-50%) rotate(${angle}deg) translateY(-8px) scale(1)`, opacity: 1 },
+            { transform: `translate(-50%,-50%) rotate(${angle}deg) translateY(-52px) scale(0)`, opacity: 0 },
+          ],
+          { duration: 600, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "forwards" }
+        );
+        anim.onfinish = () => d.remove();
+      }
+    }
+    window.addEventListener("pointerdown", (e) => burst(e.clientX, e.clientY));
+  </script>
+</body>
+</html>
