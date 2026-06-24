@@ -178,8 +178,9 @@ async function recordUrl(
       recordVideo: { dir, size: viewport },
     });
     const page = await context.newPage();
-    await page.goto(url, { waitUntil: "load", timeout: 30000 });
-    await page.waitForTimeout(800); // let entrance animations begin
+    // domcontentloaded (not "load") so the recording window starts as the animation BEGINS,
+    // instead of blocking on slow sub-resources until the on-load animation has already settled.
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
     if (interaction === "scroll") {
       await page.evaluate(async (ms: number) => {
         await new Promise<void>((resolve) => {

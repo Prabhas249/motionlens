@@ -149,6 +149,16 @@ MOTION PRECISION — report ONLY what you actually see. Inventing a motion is WO
   systems into one.
 - CUMULATIVE reveals STACK: when items appear progressively and PERSIST (State A, then A+B, then A+B+C), say
   they accumulate / stack across the cycle — not that each new one replaces the previous.
+- MULTI-PHASE PATHS — describe EVERY leg; never collapse a two-step move into one. If elements first
+  GATHER / STACK / converge at a point and THEN scatter / disperse outward (or rise→fall, in→out, expand→snap-
+  back), emit BOTH legs as ordered beats, each with its own timing — not a single "explode". The intermediate
+  pile / cluster state is a REAL beat; report it. A deliberate GAP a title opens in its middle where content
+  first gathers before flying apart is part of the choreography — name it.
+- EVERY DISTINCT ELEMENT, INCLUDING THE QUIET ONES — do not report only the big / colorful / high-contrast
+  items. A pale or low-contrast shape on a similar background (e.g. a white moth/butterfly on off-white), a
+  SMALL element, or one that arrives LATE (flies in near the end, after the rest has settled) is easy to miss —
+  scan the FINAL settled frame specifically for late or subtle arrivals and give each its own motion entry. If
+  you half-see one but cannot confirm it, include it at confidence:"low" inferred:true rather than dropping it.
 - Determine easing from what you see: if the element overshoots/bounces past its end then settles, label it
   spring / ease-out-back; if it settles smoothly, ease-out / ease-in-out / linear. Report linear or
   no-overshoot when there is none — do NOT default to "spring". A SETTLE span in the motion-energy hint
