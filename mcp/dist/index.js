@@ -14,10 +14,14 @@ const EXT_MIME = { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm",
 const mimeFor = (name) => EXT_MIME[name.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? ""] ?? "video/mp4";
 // POST to /api/analyze and read the NDJSON stream. Always grab the blueprint; if `includeStoryboard`,
 // also wait for the frames line (storyboard keyframes), otherwise abort early for speed.
-async function getAnalysis(buf, name, mode, includeStoryboard) {
+async function getAnalysis(buf, name, mode, includeStoryboard, screenshot) {
     const form = new FormData();
     form.append("video", new Blob([new Uint8Array(buf)], { type: mimeFor(name) }), name);
     form.append("mode", mode);
+    // Final-frame screenshot companion → exact colors/sizes/positions (fixes video's literal-accuracy gap).
+    if (screenshot) {
+        form.append("screenshot", new Blob([new Uint8Array(screenshot)], { type: "image/png" }), "final.png");
+    }
     const ac = new AbortController();
     let res;
     try {
@@ -130,7 +134,8 @@ async function launchBrowser() {
         return await chromium.launch({ headless: true });
     }
 }
-// Record a live URL locally with a headless browser → returns the .webm bytes.
+// Record a live URL locally → returns the .webm bytes AND a sharp final-frame screenshot
+// (the screenshot gives the engine exact colors/sizes/final positions; the video gives motion).
 async function recordUrl(url, interaction, seconds, viewport) {
     const dir = await mkdtemp(join(tmpdir(), "ml-rec-"));
     const browser = await launchBrowser();
@@ -163,12 +168,20 @@ async function recordUrl(url, interaction, seconds, viewport) {
         else {
             await page.waitForTimeout(seconds * 1000);
         }
+        // Sharp screenshot of the SETTLED final state (exact colors/sizes/positions).
+        let screenshot = null;
+        try {
+            screenshot = await page.screenshot({ type: "png" });
+        }
+        catch {
+            /* screenshot is best-effort */
+        }
         const video = page.video();
         await context.close(); // finalizes the recording
         const vpath = video ? await video.path() : null;
         if (!vpath)
             throw new Error("recording produced no video");
-        return await readFile(vpath);
+        return { video: await readFile(vpath), screenshot };
     }
     finally {
         await browser.close();
@@ -177,8 +190,8 @@ async function recordUrl(url, interaction, seconds, viewport) {
     }
 }
 // Shared: analyze a video buffer → write code/blueprint files → build the tool result.
-async function runAnalysis(buf, name, mode, fw, wantStoryboard, saveDir) {
-    const { blueprint, frames } = await getAnalysis(buf, name, mode, wantStoryboard);
+async function runAnalysis(buf, name, mode, fw, wantStoryboard, saveDir, screenshot) {
+    const { blueprint, frames } = await getAnalysis(buf, name, mode, wantStoryboard, screenshot);
     const code = await getCode(blueprint, fw);
     const dir = saveDir || join(process.cwd(), "motionlens-output");
     await mkdir(dir, { recursive: true });
@@ -272,8 +285,8 @@ server.tool("analyze_url", "Record a live website/app at a URL on THIS machine (
     try {
         const vp = viewport === "mobile" ? { width: 390, height: 844 } : { width: 1280, height: 800 };
         const secs = Math.min(30, Math.max(3, seconds ?? 10));
-        const buf = await recordUrl(url, interaction ?? "load", secs, vp);
-        return await runAnalysis(buf, "recording.webm", mode ?? "standard", framework ?? "Framer Motion", include_storyboard ?? true, save_dir);
+        const { video, screenshot } = await recordUrl(url, interaction ?? "load", secs, vp);
+        return await runAnalysis(video, "recording.webm", mode ?? "standard", framework ?? "Framer Motion", include_storyboard ?? true, save_dir, screenshot);
     }
     catch (e) {
         return {

@@ -39,10 +39,15 @@ async function getAnalysis(
   name: string,
   mode: string,
   includeStoryboard: boolean,
+  screenshot?: Buffer | null,
 ): Promise<{ blueprint: Blueprint; frames: Frame[] }> {
   const form = new FormData();
   form.append("video", new Blob([new Uint8Array(buf)], { type: mimeFor(name) }), name);
   form.append("mode", mode);
+  // Final-frame screenshot companion → exact colors/sizes/positions (fixes video's literal-accuracy gap).
+  if (screenshot) {
+    form.append("screenshot", new Blob([new Uint8Array(screenshot)], { type: "image/png" }), "final.png");
+  }
 
   const ac = new AbortController();
   let res: Response;
@@ -156,13 +161,14 @@ async function launchBrowser() {
   }
 }
 
-// Record a live URL locally with a headless browser → returns the .webm bytes.
+// Record a live URL locally → returns the .webm bytes AND a sharp final-frame screenshot
+// (the screenshot gives the engine exact colors/sizes/final positions; the video gives motion).
 async function recordUrl(
   url: string,
   interaction: "load" | "scroll",
   seconds: number,
   viewport: { width: number; height: number },
-): Promise<Buffer> {
+): Promise<{ video: Buffer; screenshot: Buffer | null }> {
   const dir = await mkdtemp(join(tmpdir(), "ml-rec-"));
   const browser = await launchBrowser();
   try {
@@ -191,11 +197,18 @@ async function recordUrl(
     } else {
       await page.waitForTimeout(seconds * 1000);
     }
+    // Sharp screenshot of the SETTLED final state (exact colors/sizes/positions).
+    let screenshot: Buffer | null = null;
+    try {
+      screenshot = await page.screenshot({ type: "png" });
+    } catch {
+      /* screenshot is best-effort */
+    }
     const video = page.video();
     await context.close(); // finalizes the recording
     const vpath = video ? await video.path() : null;
     if (!vpath) throw new Error("recording produced no video");
-    return await readFile(vpath);
+    return { video: await readFile(vpath), screenshot };
   } finally {
     await browser.close();
     // Delete the temp recording — nothing should linger on the user's disk.
@@ -211,8 +224,9 @@ async function runAnalysis(
   fw: string,
   wantStoryboard: boolean,
   saveDir: string | undefined,
+  screenshot?: Buffer | null,
 ): Promise<{ content: ToolContent[] }> {
-  const { blueprint, frames } = await getAnalysis(buf, name, mode, wantStoryboard);
+  const { blueprint, frames } = await getAnalysis(buf, name, mode, wantStoryboard, screenshot);
   const code = await getCode(blueprint, fw);
 
   const dir = saveDir || join(process.cwd(), "motionlens-output");
@@ -337,14 +351,15 @@ server.tool(
     try {
       const vp = viewport === "mobile" ? { width: 390, height: 844 } : { width: 1280, height: 800 };
       const secs = Math.min(30, Math.max(3, seconds ?? 10));
-      const buf = await recordUrl(url, interaction ?? "load", secs, vp);
+      const { video, screenshot } = await recordUrl(url, interaction ?? "load", secs, vp);
       return await runAnalysis(
-        buf,
+        video,
         "recording.webm",
         mode ?? "standard",
         framework ?? "Framer Motion",
         include_storyboard ?? true,
         save_dir,
+        screenshot,
       );
     } catch (e) {
       return {
