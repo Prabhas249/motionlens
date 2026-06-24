@@ -22,11 +22,17 @@ type Blueprint = {
 const stripFences = (s: string) =>
   s.replace(/^```[a-z]*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
 
+// Derive a proper video MIME type from the file name so the upload isn't tagged
+// application/octet-stream (which Gemini rejects).
+const EXT_MIME: Record<string, string> = { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", m4v: "video/x-m4v" };
+const mimeFor = (name: string) =>
+  EXT_MIME[name.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? ""] ?? "video/mp4";
+
 // POST the video to /api/analyze and read the NDJSON stream just until the blueprint line
 // (we don't need the storyboard frames for the agent, so we abort once we have it).
 async function getBlueprint(buf: Buffer, name: string, mode: string): Promise<Blueprint> {
   const form = new FormData();
-  form.append("video", new Blob([new Uint8Array(buf)]), name);
+  form.append("video", new Blob([new Uint8Array(buf)], { type: mimeFor(name) }), name);
   form.append("mode", mode);
 
   const ac = new AbortController();

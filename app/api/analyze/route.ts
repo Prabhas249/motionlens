@@ -997,7 +997,7 @@ export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return Response.json({ error: "Missing GEMINI_API_KEY — add it to .env.local and restart." }, { status: 500 });
+      return Response.json({ error: "MotionLens engine isn't configured — add your API key to .env.local and restart." }, { status: 500 });
     }
     const ai = new GoogleGenAI({ apiKey });
 
@@ -1041,12 +1041,16 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     // Measure the motion-energy timeline locally while Gemini uploads/processes the video (parallel, free).
     const energyP = motionEnergy(tmpPath);
 
-    let uploaded = await ai.files.upload({ file: tmpPath, config: { mimeType: file.type || "video/mp4", displayName: safeName } });
+    // Some clients (e.g. the MCP server) send the blob as application/octet-stream;
+    // trust file.type only when it's a real video type, otherwise derive from the extension.
+    const EXT_MIME: Record<string, string> = { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", m4v: "video/x-m4v" };
+    const videoMime = file.type && file.type.startsWith("video/") ? file.type : (EXT_MIME[ext] || "video/mp4");
+    let uploaded = await ai.files.upload({ file: tmpPath, config: { mimeType: videoMime, displayName: safeName } });
     while (uploaded.state === "PROCESSING") {
       await new Promise((r) => setTimeout(r, 1500));
       uploaded = await ai.files.get({ name: uploaded.name! });
     }
-    if (uploaded.state === "FAILED") return Response.json({ error: "Gemini failed to process the video." }, { status: 500 });
+    if (uploaded.state === "FAILED") return Response.json({ error: "MotionLens couldn't process this video — try a shorter clip or Standard mode." }, { status: 500 });
 
     const uri = uploaded.uri!;
     const mime = uploaded.mimeType!;
@@ -1229,7 +1233,10 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
     });
   } catch (err) {
-    return Response.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    const raw = err instanceof Error ? err.message : "Unknown error";
+    // Never leak the underlying provider in user-facing errors — the engine is "MotionLens".
+    const clean = raw.replace(/google generative ai|googleapis?|google[- ]?genai|gemini|google/gi, "the engine");
+    return Response.json({ error: `MotionLens engine error: ${clean}` }, { status: 500 });
   } finally {
     if (tmpPath) await unlink(tmpPath).catch(() => {});
   }
