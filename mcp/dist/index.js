@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir, mkdtemp } from "node:fs/promises";
+import { readFile, writeFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
@@ -172,6 +172,8 @@ async function recordUrl(url, interaction, seconds, viewport) {
     }
     finally {
         await browser.close();
+        // Delete the temp recording — nothing should linger on the user's disk.
+        await rm(dir, { recursive: true, force: true }).catch(() => { });
     }
 }
 // Shared: analyze a video buffer → write code/blueprint files → build the tool result.
