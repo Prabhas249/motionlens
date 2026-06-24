@@ -2,6 +2,7 @@
 import { readFile, writeFile, mkdir, mkdtemp } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { tmpdir } from "node:os";
+import { spawn } from "node:child_process";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -44,7 +45,14 @@ async function getAnalysis(
   form.append("mode", mode);
 
   const ac = new AbortController();
-  const res = await fetch(`${API}/api/analyze`, { method: "POST", body: form, signal: ac.signal });
+  let res: Response;
+  try {
+    res = await fetch(`${API}/api/analyze`, { method: "POST", body: form, signal: ac.signal });
+  } catch (e) {
+    throw new Error(
+      `Couldn't reach the MotionLens engine at ${API}. Make sure it's running, or set MOTIONLENS_API_URL to your deployed URL. [${(e as Error).message}]`,
+    );
+  }
   if (!res.ok || !res.body) {
     throw new Error(`analyze failed (${res.status}): ${await res.text().catch(() => "")}`);
   }
@@ -128,6 +136,26 @@ function formatSpec(bp: Blueprint): string {
 
 type ToolContent = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
 
+// Launch headless Chromium — if the browser binary isn't installed yet (first run on a new machine),
+// install it once automatically, then retry. So users never have to run `playwright install` by hand.
+async function launchBrowser() {
+  const { chromium } = await import("playwright");
+  try {
+    return await chromium.launch({ headless: true });
+  } catch (e) {
+    const msg = (e as Error).message || "";
+    if (!/executable doesn't exist|Looks like Playwright|playwright install|Download the browser/i.test(msg)) throw e;
+    await new Promise<void>((resolve, reject) => {
+      const p = spawn("npx", ["--yes", "playwright", "install", "chromium"], { stdio: "ignore" });
+      p.on("exit", (code) =>
+        code === 0 ? resolve() : reject(new Error("Couldn't auto-install Chromium — run: npx playwright install chromium")),
+      );
+      p.on("error", reject);
+    });
+    return await chromium.launch({ headless: true });
+  }
+}
+
 // Record a live URL locally with a headless browser → returns the .webm bytes.
 async function recordUrl(
   url: string,
@@ -135,9 +163,8 @@ async function recordUrl(
   seconds: number,
   viewport: { width: number; height: number },
 ): Promise<Buffer> {
-  const { chromium } = await import("playwright");
   const dir = await mkdtemp(join(tmpdir(), "ml-rec-"));
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   try {
     const context = await browser.newContext({
       viewport,

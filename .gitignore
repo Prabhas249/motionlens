@@ -4,3 +4,6 @@ out
 .env*.local
 .DS_Store
 *.log
+
+# MCP analysis output
+motionlens-output/
