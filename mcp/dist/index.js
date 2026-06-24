@@ -10,9 +10,9 @@ const stripFences = (s) => s.replace(/^```[a-z]*\n?/i, "").replace(/\n?```\s*$/i
 // application/octet-stream (which Gemini rejects).
 const EXT_MIME = { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", m4v: "video/x-m4v" };
 const mimeFor = (name) => EXT_MIME[name.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? ""] ?? "video/mp4";
-// POST the video to /api/analyze and read the NDJSON stream just until the blueprint line
-// (we don't need the storyboard frames for the agent, so we abort once we have it).
-async function getBlueprint(buf, name, mode) {
+// POST to /api/analyze and read the NDJSON stream. Always grab the blueprint; if `includeStoryboard`,
+// also wait for the frames line (storyboard keyframes), otherwise abort early for speed.
+async function getAnalysis(buf, name, mode, includeStoryboard) {
     const form = new FormData();
     form.append("video", new Blob([new Uint8Array(buf)], { type: mimeFor(name) }), name);
     form.append("mode", mode);
@@ -24,6 +24,8 @@ async function getBlueprint(buf, name, mode) {
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let acc = "";
+    let blueprint = null;
+    let frames = [];
     try {
         for (;;) {
             const { done, value } = await reader.read();
@@ -38,8 +40,17 @@ async function getBlueprint(buf, name, mode) {
                 try {
                     const msg = JSON.parse(line);
                     if (msg.type === "blueprint" && msg.blueprint) {
-                        ac.abort(); // stop before the storyboard — the agent only needs the blueprint
-                        return msg.blueprint;
+                        blueprint = msg.blueprint;
+                        if (!includeStoryboard) {
+                            ac.abort();
+                            return { blueprint, frames: [] };
+                        }
+                    }
+                    else if (msg.type === "frames") {
+                        frames = Array.isArray(msg.frames) ? msg.frames : [];
+                        ac.abort();
+                        if (blueprint)
+                            return { blueprint, frames };
                     }
                 }
                 catch {
@@ -53,6 +64,8 @@ async function getBlueprint(buf, name, mode) {
         if (e.name !== "AbortError")
             throw e;
     }
+    if (blueprint)
+        return { blueprint, frames };
     throw new Error("no blueprint in response");
 }
 async function getCode(blueprint, framework) {
@@ -103,13 +116,27 @@ server.tool("analyze_video", "Analyze a local UI-animation video file (mp4/mov/w
         .enum(["Framer Motion", "CSS", "GSAP", "Tailwind"])
         .optional()
         .describe("Target framework for the generated code (default 'Framer Motion'). Use whichever the user names; if they mention React/motion use Framer Motion, plain web use CSS, timelines use GSAP."),
-}, async ({ path, mode, framework }) => {
+    include_storyboard: z
+        .boolean()
+        .optional()
+        .describe("Also return the storyboard keyframe images (default true). Set false for a faster, text-only result (spec + code only)."),
+}, async ({ path, mode, framework, include_storyboard }) => {
     const fw = framework ?? "Framer Motion";
+    const wantStoryboard = include_storyboard ?? true;
     try {
         const buf = await readFile(path);
-        const bp = await getBlueprint(buf, basename(path) || "clip.mp4", mode ?? "precision");
-        const code = await getCode(bp, fw);
-        return { content: [{ type: "text", text: formatResult(bp, code, fw) }] };
+        const { blueprint, frames } = await getAnalysis(buf, basename(path) || "clip.mp4", mode ?? "precision", wantStoryboard);
+        const code = await getCode(blueprint, fw);
+        const content = [{ type: "text", text: formatResult(blueprint, code, fw) }];
+        if (wantStoryboard && frames.length) {
+            content.push({ type: "text", text: `## Storyboard (${frames.length} keyframes)` });
+            for (const f of frames) {
+                const m = (f.img ?? "").match(/^data:(image\/[\w.+-]+);base64,(.+)$/s);
+                if (m)
+                    content.push({ type: "image", data: m[2], mimeType: m[1] });
+            }
+        }
+        return { content };
     }
     catch (e) {
         return {

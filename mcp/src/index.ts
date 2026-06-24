@@ -28,9 +28,16 @@ const EXT_MIME: Record<string, string> = { mp4: "video/mp4", mov: "video/quickti
 const mimeFor = (name: string) =>
   EXT_MIME[name.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? ""] ?? "video/mp4";
 
-// POST the video to /api/analyze and read the NDJSON stream just until the blueprint line
-// (we don't need the storyboard frames for the agent, so we abort once we have it).
-async function getBlueprint(buf: Buffer, name: string, mode: string): Promise<Blueprint> {
+type Frame = { img?: string; label?: string };
+
+// POST to /api/analyze and read the NDJSON stream. Always grab the blueprint; if `includeStoryboard`,
+// also wait for the frames line (storyboard keyframes), otherwise abort early for speed.
+async function getAnalysis(
+  buf: Buffer,
+  name: string,
+  mode: string,
+  includeStoryboard: boolean,
+): Promise<{ blueprint: Blueprint; frames: Frame[] }> {
   const form = new FormData();
   form.append("video", new Blob([new Uint8Array(buf)], { type: mimeFor(name) }), name);
   form.append("mode", mode);
@@ -44,6 +51,8 @@ async function getBlueprint(buf: Buffer, name: string, mode: string): Promise<Bl
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let acc = "";
+  let blueprint: Blueprint | null = null;
+  let frames: Frame[] = [];
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -56,8 +65,15 @@ async function getBlueprint(buf: Buffer, name: string, mode: string): Promise<Bl
         try {
           const msg = JSON.parse(line);
           if (msg.type === "blueprint" && msg.blueprint) {
-            ac.abort(); // stop before the storyboard — the agent only needs the blueprint
-            return msg.blueprint as Blueprint;
+            blueprint = msg.blueprint as Blueprint;
+            if (!includeStoryboard) {
+              ac.abort();
+              return { blueprint, frames: [] };
+            }
+          } else if (msg.type === "frames") {
+            frames = Array.isArray(msg.frames) ? msg.frames : [];
+            ac.abort();
+            if (blueprint) return { blueprint, frames };
           }
         } catch {
           /* partial / non-JSON line, keep buffering */
@@ -68,6 +84,7 @@ async function getBlueprint(buf: Buffer, name: string, mode: string): Promise<Bl
   } catch (e) {
     if ((e as { name?: string }).name !== "AbortError") throw e;
   }
+  if (blueprint) return { blueprint, frames };
   throw new Error("no blueprint in response");
 }
 
@@ -129,14 +146,38 @@ server.tool(
       .describe(
         "Target framework for the generated code (default 'Framer Motion'). Use whichever the user names; if they mention React/motion use Framer Motion, plain web use CSS, timelines use GSAP.",
       ),
+    include_storyboard: z
+      .boolean()
+      .optional()
+      .describe(
+        "Also return the storyboard keyframe images (default true). Set false for a faster, text-only result (spec + code only).",
+      ),
   },
-  async ({ path, mode, framework }) => {
+  async ({ path, mode, framework, include_storyboard }) => {
     const fw = framework ?? "Framer Motion";
+    const wantStoryboard = include_storyboard ?? true;
     try {
       const buf = await readFile(path);
-      const bp = await getBlueprint(buf, basename(path) || "clip.mp4", mode ?? "precision");
-      const code = await getCode(bp, fw);
-      return { content: [{ type: "text", text: formatResult(bp, code, fw) }] };
+      const { blueprint, frames } = await getAnalysis(
+        buf,
+        basename(path) || "clip.mp4",
+        mode ?? "precision",
+        wantStoryboard,
+      );
+      const code = await getCode(blueprint, fw);
+
+      const content: Array<
+        { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
+      > = [{ type: "text", text: formatResult(blueprint, code, fw) }];
+
+      if (wantStoryboard && frames.length) {
+        content.push({ type: "text", text: `## Storyboard (${frames.length} keyframes)` });
+        for (const f of frames) {
+          const m = (f.img ?? "").match(/^data:(image\/[\w.+-]+);base64,(.+)$/s);
+          if (m) content.push({ type: "image", data: m[2], mimeType: m[1] });
+        }
+      }
+      return { content };
     } catch (e) {
       return {
         isError: true,
