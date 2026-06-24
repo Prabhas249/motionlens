@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { readFile } from "node:fs/promises";
-import { basename } from "node:path";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { basename, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -78,7 +78,7 @@ async function getCode(blueprint, framework) {
         return "";
     return stripFences(await res.text());
 }
-function formatResult(bp, code, framework) {
+function formatSpec(bp) {
     const motion = (bp.motion ?? [])
         .map((m) => {
         const o = m;
@@ -99,13 +99,12 @@ function formatResult(bp, code, framework) {
         bp.feel?.length ? `\n## Feel\n${bp.feel.join(", ")}` : "",
         bp.blind_spots?.length ? `\n## Blind spots\n${bp.blind_spots.map((b) => `- ${b}`).join("\n")}` : "",
         bp.agent_prompt ? `\n## Implementation spec (authoritative)\n${bp.agent_prompt}` : "",
-        code ? `\n## ${framework} code\n\`\`\`tsx\n${code}\n\`\`\`` : "",
     ]
         .filter(Boolean)
         .join("\n");
 }
 const server = new McpServer({ name: "motionlens", version: "0.1.0" });
-server.tool("analyze_video", "Analyze a local UI-animation video file (mp4/mov/webm) and return a structured Motion Blueprint plus ready-to-paste recreation code. Use this when the user wants to understand or recreate an animation from a clip on disk.", {
+server.tool("analyze_video", "Analyze a local UI-animation video (mp4/mov/webm). Writes a Motion Blueprint + ready-to-paste recreation code to files (so nothing truncates), and returns a summary, the saved file paths, a short code preview, and the storyboard keyframe images. Use this to understand or recreate an animation from a clip on disk.", {
     path: z.string().describe("Absolute path to the video file on the user's machine."),
     mode: z
         .enum(["standard", "annotated", "precision"])
@@ -119,15 +118,43 @@ server.tool("analyze_video", "Analyze a local UI-animation video file (mp4/mov/w
     include_storyboard: z
         .boolean()
         .optional()
-        .describe("Also return the storyboard keyframe images (default true). Set false for a faster, text-only result (spec + code only)."),
-}, async ({ path, mode, framework, include_storyboard }) => {
+        .describe("Also return the storyboard keyframe images (default true). Set false for a faster, text-only result."),
+    save_dir: z
+        .string()
+        .optional()
+        .describe("Directory to write the generated code + blueprint files into. Default: ./motionlens-output in the current working directory. The full code is ALWAYS written to a file so it never gets truncated."),
+}, async ({ path, mode, framework, include_storyboard, save_dir }) => {
     const fw = framework ?? "Framer Motion";
     const wantStoryboard = include_storyboard ?? true;
     try {
         const buf = await readFile(path);
         const { blueprint, frames } = await getAnalysis(buf, basename(path) || "clip.mp4", mode ?? "precision", wantStoryboard);
         const code = await getCode(blueprint, fw);
-        const content = [{ type: "text", text: formatResult(blueprint, code, fw) }];
+        // Always write the full code + spec to files — long code truncates if returned inline.
+        const dir = save_dir || join(process.cwd(), "motionlens-output");
+        await mkdir(dir, { recursive: true });
+        const ext = fw === "CSS" ? "css" : fw === "GSAP" ? "js" : "tsx";
+        const codeFile = join(dir, `MotionLensAnimation.${ext}`);
+        const specFile = join(dir, "BLUEPRINT.md");
+        const jsonFile = join(dir, "blueprint.json");
+        const spec = formatSpec(blueprint);
+        await writeFile(codeFile, code || "// no code generated");
+        await writeFile(specFile, spec);
+        await writeFile(jsonFile, JSON.stringify(blueprint, null, 2));
+        const preview = code ? code.split("\n").slice(0, 28).join("\n") : "";
+        const text = [
+            spec,
+            `\n## Saved (full files — no truncation)`,
+            `- ${fw} code → ${codeFile}`,
+            `- Spec → ${specFile}`,
+            `- Blueprint JSON → ${jsonFile}`,
+            preview
+                ? `\n## Code preview (first 28 lines — full file saved above)\n\`\`\`${ext}\n${preview}\n…\n\`\`\``
+                : "",
+        ]
+            .filter(Boolean)
+            .join("\n");
+        const content = [{ type: "text", text }];
         if (wantStoryboard && frames.length) {
             content.push({ type: "text", text: `## Storyboard (${frames.length} keyframes)` });
             for (const f of frames) {
