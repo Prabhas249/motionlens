@@ -22,11 +22,18 @@ export const Highlight = ({
 
 export const BLUR_FADE_DELAY = 0.15;
 
+// The product app (dashboard + auth) lives at a separate origin from this
+// marketing site. Every CTA sends the visitor to its sign-in screen, which
+// then drops them into /dashboard after Google auth.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const LOGIN_URL = `${APP_URL}/login`;
+
 export const siteConfig = {
     name: "MotionLens",
     description: "AI-powered code generation and review.",
     cta: "Get Started",
-    url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    url: APP_URL,
+    loginUrl: LOGIN_URL,
     keywords: [
         "AI Code Generation",
         "AI Code Review",
@@ -67,7 +74,7 @@ export const siteConfig = {
         cta: {
             primary: {
                 text: "Start for free",
-                href: "#",
+                href: LOGIN_URL,
             },
         },
     },
@@ -650,7 +657,7 @@ export const siteConfig = {
         pricingItems: [
             {
                 name: "Pro",
-                href: "#",
+                href: LOGIN_URL,
                 price: "$24",
                 period: "month",
                 yearlyPrice: "$240",
@@ -670,7 +677,7 @@ export const siteConfig = {
             },
             {
                 name: "Studio",
-                href: "#",
+                href: LOGIN_URL,
                 price: "$49",
                 period: "month",
                 yearlyPrice: "$490",
@@ -738,7 +745,7 @@ export const siteConfig = {
         backgroundImage: "/agent-cta-background.png",
         button: {
             text: "Start free trial",
-            href: "#",
+            href: LOGIN_URL,
         },
         subtext: "Drop in any animation, get an agent-ready Blueprint. 3-day free trial — cancel anytime.",
     },

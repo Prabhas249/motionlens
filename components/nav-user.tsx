@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
 	Avatar,
 	AvatarFallback,
@@ -16,22 +19,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserIcon, SettingsIcon, CreditCardIcon, LogOutIcon } from "lucide-react";
 
-const user = {
-	name: "Shaban Haider",
-	email: "shaban@motionlens.dev",
-	avatar: "https://github.com/shabanhr.png",
-};
-
 export function NavUser() {
+	const router = useRouter();
+	const [user, setUser] = useState({ name: "Account", email: "", avatar: "" });
+
+	useEffect(() => {
+		const supabase = createClient();
+		supabase.auth.getUser().then(({ data }) => {
+			const u = data.user;
+			if (!u) return;
+			const meta = u.user_metadata ?? {};
+			setUser({
+				name: meta.full_name || meta.name || u.email?.split("@")[0] || "Account",
+				email: u.email || "",
+				avatar: meta.avatar_url || meta.picture || "",
+			});
+		});
+	}, []);
+
+	async function signOut() {
+		const supabase = createClient();
+		await supabase.auth.signOut();
+		router.push("/login");
+		router.refresh();
+	}
+
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger render={<Avatar className="size-8" />}><AvatarImage src={user.avatar} /><AvatarFallback>{user.name.charAt(0)}</AvatarFallback></DropdownMenuTrigger>
+			<DropdownMenuTrigger render={<Avatar className="size-8" />}><AvatarImage src={user.avatar} /><AvatarFallback>{(user.name || "U").charAt(0).toUpperCase()}</AvatarFallback></DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-60">
 				<DropdownMenuItem className="flex items-center justify-start gap-2">
 					<DropdownMenuLabel className="flex items-center gap-3">
 						<Avatar className="size-10">
 							<AvatarImage src={user.avatar} />
-							<AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+							<AvatarFallback>{(user.name || "U").charAt(0).toUpperCase()}</AvatarFallback>
 						</Avatar>
 						<div>
 							<span className="font-medium text-foreground">{user.name}</span>{" "}
@@ -45,21 +66,18 @@ export function NavUser() {
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem>
-						<UserIcon
-						/>
+						<UserIcon />
 						Account
 					</DropdownMenuItem>
 					<DropdownMenuItem>
-						<SettingsIcon
-						/>
+						<SettingsIcon />
 						Settings
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem>
-						<CreditCardIcon
-						/>
+						<CreditCardIcon />
 						Plan & Billing
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
@@ -68,9 +86,9 @@ export function NavUser() {
 					<DropdownMenuItem
 						className="w-full cursor-pointer"
 						variant="destructive"
+						onClick={signOut}
 					>
-						<LogOutIcon
-						/>
+						<LogOutIcon />
 						Log out
 					</DropdownMenuItem>
 				</DropdownMenuGroup>

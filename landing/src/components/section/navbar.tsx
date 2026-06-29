@@ -288,7 +288,10 @@ function MobileNav({
                   }}
                 >
                   <Button
-                    onClick={onClose}
+                    onClick={() => {
+                      onClose();
+                      window.location.href = siteConfig.loginUrl;
+                    }}
                     className="w-full rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     {siteConfig.cta}
