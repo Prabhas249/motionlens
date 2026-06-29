@@ -27,7 +27,7 @@ export function AppSidebar() {
 			variant="sidebar"
 		>
 			<SidebarHeader className="h-14 justify-center border-b px-2">
-				<SidebarMenuButton render={<a href="#link" />}><LogoIcon className="size-5" /><span className="font-medium text-foreground!">MotionLens</span></SidebarMenuButton>
+				<SidebarMenuButton render={<a href="/dashboard" />}><LogoIcon className="size-5" /><span className="font-medium text-foreground!">MotionLens</span></SidebarMenuButton>
 			</SidebarHeader>
 			<SidebarContent>
 				{navGroups.map((group, index) => (

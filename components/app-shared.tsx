@@ -20,12 +20,11 @@ export const navGroups: SidebarNavGroup[] = [
 		items: [
 			{
 				title: "Dashboard",
-				path: "#/dashboard",
+				path: "/dashboard",
 				icon: (
 					<LayoutGridIcon
 					/>
 				),
-				isActive: true,
 			},
 			{
 				title: "Analytics",
@@ -79,7 +78,7 @@ export const navGroups: SidebarNavGroup[] = [
 		items: [
 			{
 				title: "Settings",
-				path: "#/settings",
+				path: "/settings",
 				icon: (
 					<SettingsIcon
 					/>
@@ -87,7 +86,7 @@ export const navGroups: SidebarNavGroup[] = [
 			},
 			{
 				title: "Billing",
-				path: "#/billing",
+				path: "/settings/billing",
 				icon: (
 					<CreditCardIcon
 					/>

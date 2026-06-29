@@ -41,7 +41,7 @@ export function CreditsBadge({ className }: { className?: string }) {
 
   return (
     <a
-      href="/#pricing"
+      href="/settings/billing"
       title={
         paid
           ? `${plan} plan`

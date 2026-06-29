@@ -65,18 +65,18 @@ export function NavUser() {
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DropdownMenuItem>
+					<DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/settings")}>
 						<UserIcon />
 						Account
 					</DropdownMenuItem>
-					<DropdownMenuItem>
+					<DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/settings/notifications")}>
 						<SettingsIcon />
 						Settings
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DropdownMenuItem>
+					<DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/settings/billing")}>
 						<CreditCardIcon />
 						Plan & Billing
 					</DropdownMenuItem>
