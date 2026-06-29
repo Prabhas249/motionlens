@@ -90,7 +90,7 @@ export function BlueprintView({
       const res = await fetch("/api/generate-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blueprint: bp, framework: fw ?? framework }),
+        body: JSON.stringify({ blueprint: bp, framework: fw ?? framework, frames: frames.map((f) => f.img) }),
       });
       if (!res.ok || !res.body) {
         setCode("Failed to generate code.");
