@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { createClient } from "@/lib/supabase/server";
 import sharp from "sharp";
 import { writeFile, readFile, unlink, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -1049,6 +1050,9 @@ async function buildStoryboard(
 // ---------- handler ----------
 export async function POST(req: Request) {
   let tmpPath: string | null = null;
+  // Credit bookkeeping — so we can refund the run if the engine errors after charging.
+  let supa: Awaited<ReturnType<typeof createClient>> | null = null;
+  let charged = false;
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -1059,6 +1063,27 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const file = form.get("video");
     if (!(file instanceof File)) return Response.json({ error: "No video uploaded." }, { status: 400 });
+
+    // --- auth + free-run credit gate ---
+    // Each analysis spends one run. New users start with 5 (see the profiles
+    // migration). consume_credit() atomically decrements and returns what's
+    // left, or NULL when they're out.
+    supa = await createClient();
+    const { data: { user } } = await supa.auth.getUser();
+    if (!user) {
+      return Response.json({ error: "Please sign in to run an analysis." }, { status: 401 });
+    }
+    const { data: remaining, error: creditErr } = await supa.rpc("consume_credit");
+    if (creditErr) {
+      return Response.json({ error: "Couldn't check your runs — please try again." }, { status: 500 });
+    }
+    if (remaining === null || remaining === undefined) {
+      return Response.json(
+        { error: "You've used all 5 free runs. Upgrade to keep analyzing." },
+        { status: 402 },
+      );
+    }
+    charged = true;
     const context = form.get("context");
     const focus = typeof context === "string" ? context.trim() : "";
     const userContext = focus
@@ -1314,6 +1339,10 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
     });
   } catch (err) {
+    // The run failed after we charged a credit — give it back (best effort).
+    if (charged && supa) {
+      try { await supa.rpc("refund_credit"); } catch { /* ignore */ }
+    }
     const raw = err instanceof Error ? err.message : "Unknown error";
     // Never leak the underlying provider in user-facing errors — the engine is "MotionLens".
     const clean = raw.replace(/google generative ai|googleapis?|google[- ]?genai|gemini|google/gi, "the engine");

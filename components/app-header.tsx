@@ -7,6 +7,7 @@ import { navLinks } from "@/components/app-shared";
 import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
 import { NavUser } from "@/components/nav-user";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CreditsBadge } from "@/components/credits-badge";
 import { SendIcon, BellIcon } from "lucide-react";
 
 const activeItem = navLinks.find((item) => item.isActive);
@@ -29,6 +30,7 @@ export function AppHeader() {
 				<AppBreadcrumbs page={activeItem} />
 			</div>
 			<div className="flex items-center gap-3">
+				<CreditsBadge />
 				<ThemeToggle />
 				<Button size="icon-sm" variant="outline">
 					<SendIcon

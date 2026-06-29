@@ -70,6 +70,8 @@ export default function Page() {
             setFrames([])
             setStoryboardLoading(true)
             setPhase("idle")
+            // a run was just spent — refresh the "runs left" badge
+            window.dispatchEvent(new Event("credits-updated"))
           } else if (msg.type === "frames") {
             setFrames(Array.isArray(msg.frames) ? msg.frames : [])
             setStoryboardLoading(false)
@@ -87,6 +89,8 @@ export default function Page() {
           setError(`Error ${xhr.status}`)
         }
         setPhase("error")
+        // a failed run may have been refunded (or was a no-credit 402) — resync the badge
+        window.dispatchEvent(new Event("credits-updated"))
         return
       }
       pump()
