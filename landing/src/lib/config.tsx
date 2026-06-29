@@ -646,7 +646,7 @@ export const siteConfig = {
     pricing: {
         title: "Pricing that scales with you",
         description:
-            "Whichever plan you pick, it's free until you love your docs. That's our promise.",
+            "Start with a 3-day free trial on any plan. Cancel anytime — no questions asked.",
         pricingItems: [
             {
                 name: "Pro",
@@ -663,26 +663,10 @@ export const siteConfig = {
                     "Email support",
                 ],
                 description: "For builders shipping motion with AI agents",
-                buttonText: "Upgrade to Pro",
+                buttonText: "Start free trial",
+                trialNote: "3-day free trial with 40 credits. Cancel anytime.",
                 buttonColor: "bg-secondary text-white",
                 isPopular: true,
-            },
-            {
-                name: "Free",
-                href: "#",
-                price: "$0",
-                period: "month",
-                yearlyPrice: "$0",
-                features: [
-                    "30 credits / month (~30 standard analyses)",
-                    "Standard Motion Blueprints",
-                    "Code export — Framer, GSAP, CSS, Tailwind",
-                    "Works right in your browser",
-                ],
-                description: "Perfect for trying it out",
-                buttonText: "Start Free",
-                buttonColor: "bg-accent text-primary",
-                isPopular: false,
             },
             {
                 name: "Studio",
@@ -698,7 +682,8 @@ export const siteConfig = {
                     "Priority support",
                 ],
                 description: "For teams shipping motion at scale",
-                buttonText: "Upgrade to Studio",
+                buttonText: "Start free trial",
+                trialNote: "3-day free trial with 60 credits. Cancel anytime.",
                 buttonColor: "bg-primary text-primary-foreground",
                 isPopular: false,
             },
@@ -743,7 +728,7 @@ export const siteConfig = {
                 id: 6,
                 question: "How does pricing work?",
                 answer:
-                    "Credit-based. Free includes 30 credits/month, Pro ($24) gives 300, and Studio ($49) gives 750. A standard analysis is 1 credit, Precision is 3, and code export is always free.",
+                    "Credit-based, and every plan starts with a 3-day free trial. Pro ($24) gives 300 credits/month, Studio ($49) gives 750. A standard analysis is 1.5 credits, Precision is 3, and code export is always free.",
             },
         ],
     },
@@ -752,10 +737,10 @@ export const siteConfig = {
         title: "Give your AI agent eyes for motion",
         backgroundImage: "/agent-cta-background.png",
         button: {
-            text: "Start for free",
+            text: "Start free trial",
             href: "#",
         },
-        subtext: "Drop in any animation, get an agent-ready Blueprint. Free to start — no card required.",
+        subtext: "Drop in any animation, get an agent-ready Blueprint. 3-day free trial — cancel anytime.",
     },
     footerLinks: [
         {

@@ -35,9 +35,9 @@ export function PricingSection() {
                                 Build more. Pay less. Scale smart.
                             </h3>
                             <p className="text-balance text-muted-foreground">
-                                Try free for 14 days with full access to all
-                                features. Upgrade only when your AI agent proves
-                                value.
+                                Start with a 3-day free trial on any plan — full
+                                access, cancel anytime. Pay only when your AI agent
+                                proves its worth.
                             </p>
                         </div>
                         <div className="pt-4">
@@ -112,27 +112,34 @@ export function PricingSection() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <Button
-                                                size="lg"
-                                                asChild
-                                                variant="outline"
-                                                className={cn(
-                                                    "w-full cursor-pointer rounded-full transition-all duration-300 ease-in-out",
-                                                    plan.name === "Pro"
-                                                        ? "bg-primary text-primary-foreground hover:bg-primary/80 hover:scale-[1.02]"
-                                                        : "bg-foreground text-primary-foreground hover:bg-foreground/80 hover:scale-[1.02]",
+                                            <div className="flex flex-col gap-2.5">
+                                                <Button
+                                                    size="lg"
+                                                    asChild
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "w-full cursor-pointer rounded-full transition-all duration-300 ease-in-out",
+                                                        plan.name === "Pro"
+                                                            ? "bg-primary text-primary-foreground hover:bg-primary/80 hover:scale-[1.02]"
+                                                            : "bg-foreground text-primary-foreground hover:bg-foreground/80 hover:scale-[1.02]",
+                                                    )}
+                                                >
+                                                    <a href={plan.href}>
+                                                        {plan.buttonText}
+                                                    </a>
+                                                </Button>
+                                                {plan.trialNote && (
+                                                    <p className="text-center text-xs text-muted-foreground">
+                                                        {plan.trialNote}
+                                                    </p>
                                                 )}
-                                            >
-                                                <a href={plan.href}>
-                                                    {plan.buttonText}
-                                                </a>
-                                            </Button>
+                                            </div>
                                         </div>
                                         <hr className="border-dashed border-border" />
                                         <div className="flex flex-1 flex-col gap-4">
                                             {plan.name === "Pro" && (
                                                 <p className="text-sm font-medium text-muted-foreground">
-                                                    Everything in Free +
+                                                    Includes:
                                                 </p>
                                             )}
                                             {plan.name === "Studio" && (
