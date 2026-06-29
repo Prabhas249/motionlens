@@ -255,6 +255,12 @@ tray slides down", "Tokens land in the trash with a spring", "Tokens drop away +
 tap", "Trash, button and copy fade out + background de-blurs back", "Final resting state"]. If the
 animation is simple (a single entrance), 2-3 beats is fine — never pad.
 
+CHOREOGRAPHY — EXPLAIN how the motion is ORCHESTRATED, don't just list what moves. In "summary"/"story"/"beats", surface the three things that create the FEEL, so a reader who can't see the clip can still feel it:
+  (a) TIMING RELATIONSHIPS — what is STAGGERED vs SYNCHRONIZED, what leads and what follows, the rhythm. A staggered entrance ("items pop in one-by-one, ~40ms apart") and a synchronized burst ("then they ALL detonate together at once") are completely different feels — name which, and the CONTRAST between phases (e.g. "staggered in, synchronized out").
+  (b) SPATIAL LOGIC — the PATTERN elements move into, never just "scattered": radial / balanced-quadrants / grid / arc / converging / clustered / top-down / edges-of-viewport. Name the geometry and whether the distribution is even or random.
+  (c) DYNAMIC CHARACTER — the energy across the move: accelerates outward, overshoots past its target then springs back, decelerates to a soft stop, or snaps hard. This is the difference between "tokens slide out" and "tokens detonate outward, overshoot, and spring-settle into a balanced organized chaos."
+The aim: a developer reads your explanation and understands the CHOREOGRAPHY — not just an inventory of elements and end-states.
+
 "blind_spots" = 2-4 things you genuinely CANNOT determine from THIS clip — exact easing curves/spring
 constants, precise per-element timings, z-depth or true 3D structure, whether a growth is a scale vs a mask
 reveal, whether a half-seen background blur is really there, implementation (CSS vs canvas vs video),
@@ -285,8 +291,11 @@ blind_spots. Fill/correct each motion's layer (primary/secondary/ambient/micro/e
 (true for any press/tick/ripple/spring-landing), concurrent_with (the SAME anchor on motions that happen
 together), motion_class (transform / camera / reveal / parallax / morph; a path-draw/tick is "reveal"),
 and stagger_ms. Ensure "summary" and "story" LEAD WITH THE MOTION and its FEEL and call out the
-simultaneous layers — NOT the app's purpose or an object inventory; rewrite them if they describe the
-product instead of the animation. Keep "beats" (ordered choreography, combining co-occurring layers with
+simultaneous layers AND the CHOREOGRAPHY — the timing relationships (what's staggered vs synchronized,
+what leads/follows), the spatial pattern (radial / grid / balanced / clustered, not just "scattered"),
+and the dynamic character (overshoot / spring / snap / decelerate) — NOT the app's purpose or an object
+inventory; rewrite them if they merely list elements instead of EXPLAINING how the motion is orchestrated.
+Keep "beats" (ordered choreography, combining co-occurring layers with
 "+", covering the whole sequence including any reverse/return) and "blind_spots", fixing them if wrong.
 Output the CORRECTED final Motion Blueprint as JSON, in the SAME shape as the draft. Return ONLY the JSON.`;
 
