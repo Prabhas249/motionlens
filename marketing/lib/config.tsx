@@ -22,11 +22,13 @@ export const Highlight = ({
 
 export const BLUR_FADE_DELAY = 0.15;
 
-// The product app (dashboard + auth) lives at a separate origin from this
-// marketing site. Every CTA sends the visitor to its sign-in screen, which
-// then drops them into /dashboard after Google auth.
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const LOGIN_URL = `${APP_URL}/login`;
+// Marketing + product are now ONE app on the same origin, so every CTA uses a
+// relative path — works on localhost, *.vercel.app, and the live domain with no
+// env var needed. (The old "http://localhost:3000" fallback is exactly what was
+// opening localhost in production.) CTAs land on /login, which drops the visitor
+// into /dashboard after Google auth.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://motionlens.dev";
+const LOGIN_URL = "/login";
 
 export const siteConfig = {
     name: "MotionLens",
