@@ -15,6 +15,25 @@ agent prompt) that an AI coding agent can actually implement.
 - ✅ Strategy, model, pricing, margins, v1 scope — all locked (validated by 4 AIs).
 - 🔨 Building v1. Next action: get one Gemini call working on one test video.
 
+## Repo layout (monorepo — everything in ONE repo)
+```
+motionlens/
+  app/  components/  lib/  hooks/  mcp/   ← the PRODUCT (dashboard + API + engine)
+    app/api/                              ← backend: analyze · generate-code · chat
+  docs/                                   ← strategy · pricing · build plan
+  landing/                                ← the marketing site (its own Next.js app)
+```
+
+## Run locally
+```bash
+# product (dashboard + backend)
+npm install && npm run dev
+
+# landing site
+cd landing && npm install && npm run dev
+```
+Each app is self-contained (its own `package.json`). For the product, copy `.env.local.example` → `.env.local` and add your `GEMINI_API_KEY`.
+
 ## The one-liner pitch
 "Stop describing animations. Show them." — Upload any UI animation (web **or** app),
 get a Motion Blueprint your AI coding agent gets right.

@@ -1,5 +1,43 @@
 # MotionLens — Model, Pricing & Margins
 
+## 🔄 UPDATE — June 29, 2026 (CANONICAL; supersedes the June 22 numbers below)
+
+COGS re-derived from the **actual** `analyze` + `generate-code` engineering (not estimates), at **₹95/$**. Margins are **rate-independent** — revenue (Dodo, USD) and cost (Gemini, USD) are both USD, so the ₹ rate only changes ₹ labels, not the %.
+
+### Two locked changes
+1. **Standard credit weight: 1 → `1.5`.** Real cost ratio Std:Prec ≈ 1 : 1.6, but it was charged 1 : 3 — Standard was under-priced. 1.5 aligns it and lifts the heavy-Standard margin from **57% → 77%**.
+2. **Visual-verify loop = Precision-only.** After Precision generates code, render it → screenshot → compare to the original video frames → fix the diffs (1 iteration). **Never on Free/Standard** (would crater margins). Also: **Standard code-gen → 1-pass** (Annotated/Precision stay 2-pass; Precision adds verify).
+
+> Note: `blueprint-view.tsx` auto-runs code-gen on every analysis, so code COGS is baked into each run (numbers below are **all-in**).
+
+### Revised credit weights (Std `1.5` / Ann `2` / Prec `3`) · code export = 0
+| Mode | What you get | Credits | All-in COGS (₹95/$) |
+|---|---|---|---|
+| Standard | fast blueprint + 1-pass code | **1.5** | ~$0.028 (₹2.7) |
+| Annotated | blueprint + annotated storyboard | **2** | ~$0.049 (₹4.7) |
+| Precision | multi-pass + mechanic + storyboard | **3** | ~$0.055 (₹5.2) |
+| Precision **+ verify** | + code self-checked against the video | 3 (same) | ~$0.081 (₹7.7) |
+
+### Analyses per plan (credits/mo unchanged; counts shift with Standard 1.5)
+| Plan | Price | Credits/mo | Standard / Annotated / Precision |
+|---|---|---|---|
+| Free | $0 | 30 | **20** / 15 / 10 |
+| Pro | $24 | 300 | **200** / 150 / 100 |
+| Studio | $49 | 750 | **500** / 375 / 250 |
+| Top-up | +$9 | +100 | 67 / 50 / 33 |
+
+### Margin floor (Standard 1.5 + verify gated to Precision)
+| Usage | Pro $24 | Studio $49 |
+|---|---|---|
+| Realistic (mixed) | **96%** | **95%** |
+| All Standard maxed | 77% | 71% |
+| All Annotated maxed | 69% | 62% |
+| All Precision **+ verify** | 66% | 59% |
+
+**Worst case anywhere ≈ 59% · realistic ≈ 95% · prices unchanged ($24 / $49).** Optional: bump Annotated → 2.5 to lift its 62–69% floor to ~75%.
+
+---
+
 ## 💳 DEFINITIVE PRICING & MARGINS — June 22, 2026 (CANONICAL; supersedes everything below)
 
 **Model = CREDITS** (founder decision). **Precision is now a SUPERSET** = multi-pass blueprint + mechanic pass + annotated storyboard (the works). **Code export = FREE.** Verified rates: Gemini 3 Flash **$0.50/1M in · $3/1M out**, video **258 tok/frame × fps × sec** (₹83/$).
