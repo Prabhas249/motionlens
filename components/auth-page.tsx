@@ -4,6 +4,7 @@ import { GoogleIcon } from "@/components/icons/google-icon";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { FloatingPaths } from "@/components/floating-paths";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ChevronLeftIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,7 +19,9 @@ export function AuthPage() {
 
 	return (
 		<main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
-			<div className="relative hidden h-full flex-col border-r bg-secondary p-10 lg:flex dark:bg-secondary/20">
+			<div className="relative hidden h-full flex-col overflow-hidden border-r bg-secondary p-10 lg:flex dark:bg-secondary/20">
+				{/* soft cobalt brand wash, top-left → fades out */}
+				<div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_0%_0%,color-mix(in_oklab,var(--primary)_14%,transparent)_0%,transparent_55%)]" />
 				<div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-background" />
 				<Logo className="mr-auto h-4.5" />
 
@@ -49,6 +52,7 @@ export function AuthPage() {
 					<div className="absolute top-0 right-0 h-320 w-60 -translate-y-87.5 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,--theme(--color-foreground/.04)_0,--theme(--color-foreground/.01)_80%,transparent_100%)]" />
 				</div>
 				<Button className="absolute top-7 left-5" variant="ghost" render={<a href="/" />} nativeButton={false}><ChevronLeftIcon data-icon="inline-start" />Home</Button>
+				<ThemeToggle className="absolute top-7 right-5" />
 
 				<div className="mx-auto space-y-5 sm:w-sm">
 					<Logo className="h-4.5 lg:hidden" />

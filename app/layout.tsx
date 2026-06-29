@@ -1,17 +1,16 @@
-import "./globals.css";
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
+import type { Metadata } from "next";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
-export const metadata = {
+export const metadata: Metadata = {
   title: "MotionLens",
   description: "Turn any UI animation into an AI-ready Motion Blueprint.",
 };
 
+// Root shell only — owns <html>/<body>. Each route group brings its own
+// theme + global stylesheet so the marketing and app design systems never
+// load on the same page. See app/(marketing) and app/(app).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn("dark font-sans", geist.variable)}>
+    <html lang="en" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

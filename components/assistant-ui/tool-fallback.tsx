@@ -86,7 +86,7 @@ function ToolFallbackRoot({
 
 type ToolStatus = ToolCallMessagePartStatus["type"];
 
-const statusIconMap: Record<ToolStatus, React.ElementType> = {
+const statusIconMap: Record<ToolStatus, React.ComponentType<{ className?: string }>> = {
   running: LoaderIcon,
   complete: CheckIcon,
   incomplete: XCircleIcon,
