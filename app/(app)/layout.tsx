@@ -1,13 +1,10 @@
 import "../globals.css";
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 // The product (dashboard / auth). next-themes drives the `.dark` class on
 // <html>; dark is the brand default, but the theme toggle switches to the
-// branded light palette. globals.css only loads on these routes.
+// branded light palette. globals.css only loads on these routes. The Geist
+// font is inherited from the root <html> so portaled menus/dialogs match too.
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
@@ -17,7 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       storageKey="motionlens-app-theme"
       disableTransitionOnChange
     >
-      <div className={cn("font-sans", geist.variable)}>{children}</div>
+      {children}
     </ThemeProvider>
   );
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { AppShell } from "@/components/app-shell"
 import { AnalysisInput } from "@/components/analysis-input"
@@ -20,6 +20,27 @@ export default function Page() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState("")
   const [storyboardLoading, setStoryboardLoading] = useState(false)
+
+  // Reopen a saved analysis from the sidebar history (/dashboard?a=<id>).
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("a")
+    if (!id) return
+    ;(async () => {
+      try {
+        const r = await fetch(`/api/history/${id}`, { cache: "no-store" })
+        if (!r.ok) return
+        const data = await r.json()
+        if (data?.blueprint) {
+          setBlueprint(data.blueprint as Blueprint)
+          if (data.mode) setMode(data.mode as Mode)
+          setFrames([])
+          setPhase("idle")
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [])
 
   const busy = phase === "uploading" || phase === "analyzing"
 
@@ -70,7 +91,7 @@ export default function Page() {
             setFrames([])
             setStoryboardLoading(true)
             setPhase("idle")
-            // a run was just spent — refresh the "runs left" badge
+            // credits were just spent — refresh the credits badge
             window.dispatchEvent(new Event("credits-updated"))
           } else if (msg.type === "frames") {
             setFrames(Array.isArray(msg.frames) ? msg.frames : [])

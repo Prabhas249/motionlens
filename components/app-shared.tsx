@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LayoutGridIcon, BarChart3Icon, BriefcaseIcon, UsersIcon, PlugIcon, KeyRoundIcon, SettingsIcon, CreditCardIcon, HelpCircleIcon, BookOpenIcon } from "lucide-react";
+import { LayoutGridIcon, SettingsIcon, CreditCardIcon } from "lucide-react";
 
 export type SidebarNavItem = {
 	title: string;
@@ -21,99 +21,28 @@ export const navGroups: SidebarNavGroup[] = [
 			{
 				title: "Dashboard",
 				path: "/dashboard",
-				icon: (
-					<LayoutGridIcon
-					/>
-				),
-			},
-			{
-				title: "Analytics",
-				path: "#/analytics",
-				icon: (
-					<BarChart3Icon
-					/>
-				),
-			},
-			{
-				title: "Projects",
-				path: "#/projects",
-				icon: (
-					<BriefcaseIcon
-					/>
-				),
+				icon: <LayoutGridIcon />,
 			},
 		],
 	},
 	{
-		label: "Workspace",
-		items: [
-			{
-				title: "Team",
-				path: "#/team",
-				icon: (
-					<UsersIcon
-					/>
-				),
-			},
-			{
-				title: "Integrations",
-				path: "#/integrations",
-				icon: (
-					<PlugIcon
-					/>
-				),
-			},
-			{
-				title: "API Keys",
-				path: "#/api-keys",
-				icon: (
-					<KeyRoundIcon
-					/>
-				),
-			},
-		],
-	},
-	{
-		label: "Administration",
+		label: "Account",
 		items: [
 			{
 				title: "Settings",
 				path: "/settings",
-				icon: (
-					<SettingsIcon
-					/>
-				),
+				icon: <SettingsIcon />,
 			},
 			{
 				title: "Billing",
 				path: "/settings/billing",
-				icon: (
-					<CreditCardIcon
-					/>
-				),
+				icon: <CreditCardIcon />,
 			},
 		],
 	},
 ];
 
-export const footerNavLinks: SidebarNavItem[] = [
-	{
-		title: "Help Center",
-		path: "#/help",
-		icon: (
-			<HelpCircleIcon
-			/>
-		),
-	},
-	{
-		title: "Documentation",
-		path: "#/documentation",
-		icon: (
-			<BookOpenIcon
-			/>
-		),
-	},
-];
+export const footerNavLinks: SidebarNavItem[] = [];
 
 export const navLinks: SidebarNavItem[] = [
 	...navGroups.flatMap((group) =>
