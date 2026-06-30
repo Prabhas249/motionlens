@@ -47,6 +47,7 @@
     "shadcn": "^4.11.0",
     "sharp": "^0.35.2",
     "shiki": "^3.20.0",
+    "standardwebhooks": "^1.0.0",
     "svg-dotted-map": "^2.0.1",
     "tailwind-merge": "^3.6.0",
     "three": "^0.181.1",

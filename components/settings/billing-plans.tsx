@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, Loader2Icon } from "lucide-react";
 
 type Plan = {
   id: string;
@@ -57,6 +57,45 @@ const PLANS: Plan[] = [
 
 export function BillingPlans({ currentPlan }: { currentPlan: string }) {
   const [notice, setNotice] = useState("");
+  const [loading, setLoading] = useState<string | null>(null);
+
+  async function upgrade(planId: string) {
+    setLoading(planId);
+    setNotice("");
+    try {
+      const r = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planId }),
+      });
+      const d = await r.json();
+      if (d.url) window.location.href = d.url;
+      else {
+        setNotice(d.error || "Couldn't start checkout.");
+        setLoading(null);
+      }
+    } catch {
+      setNotice("Couldn't start checkout — try again.");
+      setLoading(null);
+    }
+  }
+
+  async function manage() {
+    setLoading("manage");
+    setNotice("");
+    try {
+      const r = await fetch("/api/portal", { method: "POST" });
+      const d = await r.json();
+      if (d.url) window.location.href = d.url;
+      else {
+        setNotice(d.error || "Couldn't open the billing portal.");
+        setLoading(null);
+      }
+    } catch {
+      setNotice("Couldn't open the billing portal — try again.");
+      setLoading(null);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -93,7 +132,17 @@ export function BillingPlans({ currentPlan }: { currentPlan: string }) {
                 ))}
               </ul>
               <div className="mt-5">
-                {isCurrent ? (
+                {isCurrent && plan.id !== "free" ? (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={loading !== null}
+                    onClick={manage}
+                  >
+                    {loading === "manage" && <Loader2Icon className="animate-spin" />}
+                    Manage subscription
+                  </Button>
+                ) : isCurrent ? (
                   <Button variant="outline" className="w-full" disabled>
                     Current plan
                   </Button>
@@ -105,12 +154,10 @@ export function BillingPlans({ currentPlan }: { currentPlan: string }) {
                   <Button
                     className="w-full"
                     variant={plan.highlight ? "default" : "outline"}
-                    onClick={() =>
-                      setNotice(
-                        `Checkout for ${plan.name} is coming soon — payments are being wired up.`,
-                      )
-                    }
+                    disabled={loading !== null}
+                    onClick={() => upgrade(plan.id)}
                   >
+                    {loading === plan.id && <Loader2Icon className="animate-spin" />}
                     Upgrade to {plan.name}
                   </Button>
                 )}
