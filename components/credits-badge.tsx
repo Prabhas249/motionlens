@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Shows the signed-in user's remaining free runs in the app header.
+// Shows the signed-in user's remaining credits in the app header.
 // Refetches on mount, on window focus, and whenever a run fires the
 // "credits-updated" event (dispatched by the dashboard after an analysis).
 export function CreditsBadge({ className }: { className?: string }) {
@@ -43,11 +43,9 @@ export function CreditsBadge({ className }: { className?: string }) {
     <a
       href="/settings/billing"
       title={
-        paid
-          ? `${plan} plan`
-          : out
-            ? "Out of free runs — upgrade"
-            : `${credits} free run${credits === 1 ? "" : "s"} left`
+        out
+          ? "Out of credits — upgrade"
+          : `${credits} credit${credits === 1 ? "" : "s"} left${paid ? ` · ${plan} plan` : ""}`
       }
       className={cn(
         "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors",
@@ -58,13 +56,11 @@ export function CreditsBadge({ className }: { className?: string }) {
       )}
     >
       <SparklesIcon className="size-3.5 text-primary" />
-      {paid ? (
-        <span className="capitalize">{plan}</span>
-      ) : out ? (
-        <span>Out of runs · Upgrade</span>
+      {out ? (
+        <span>Out of credits · Upgrade</span>
       ) : (
         <span>
-          <b className="text-foreground">{credits}</b> run{credits === 1 ? "" : "s"} left
+          <b className="text-foreground">{credits}</b> credit{credits === 1 ? "" : "s"}
         </span>
       )}
     </a>

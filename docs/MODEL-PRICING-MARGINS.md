@@ -1,6 +1,45 @@
 # MotionLens — Model, Pricing & Margins
 
-## 🔄 UPDATE — June 29, 2026 (CANONICAL; supersedes the June 22 numbers below)
+## 💸 PRICE CUT — June 30, 2026 (CANONICAL; supersedes everything below)
+
+**Co-founder call: $24/$49 was too expensive — halve it, keep margin ≥50% (ideally 60%+) in *any* scenario.** Re-simulated against the real `analyze` call graph (Standard = 1 video pass; Annotated = 1 video + plan + ~7 localizes; Precision = **2 video passes** + ~2 mechanic + plan + ~9 localizes) plus the auto code-gen baked into every run.
+
+### Credit weights — Standard 1 · Annotated 2 · Precision 3 · code export 0 (free)
+Cost-per-credit stays ~flat across modes, so margin is **mode-mix-independent** — a precision-heavy user can't drain you.
+
+| Mode | Credits | All-in COGS (Gemini 3 Flash $0.50/1M in · $3/1M out) |
+|---|---|---|
+| Standard | **1** | ~$0.028 |
+| Annotated | **2** | ~$0.049 |
+| Precision | **3** | ~$0.055 (+verify ~$0.081) |
+| Code export | **0** | ~$0.008 (negligible) |
+
+### NEW plans (was $24 / $49)
+| Plan | Price | Credits/mo | ≈ Standard / Annotated / Precision |
+|---|---|---|---|
+| Free | $0 | **5** | 5 / 2 / 1 |
+| **Pro** | **$9** | **150** | 150 / 75 / 50 |
+| **Studio** | **$19** | **300** | 300 / 150 / 100 |
+
+### Margins at new prices (all-in COGS)
+| Usage | Pro $9 | Studio $19 |
+|---|---|---|
+| Realistic (mixed, low use + breakage) | **~92%** | **~92%** |
+| All-Standard maxed | 53% | 56% |
+| All-Precision **+verify** maxed | 55% | 57% |
+
+**Worst case anywhere ≈ 53% · realistic ≈ 92%.** Meets the ≥50% bar in every scenario at verified Gemini rates.
+- **Fatter floor option:** bump Standard → 1.5 credits (implement as ×2 integer scaling: weights 2/3/6, pools Free 10 / Pro 300 / Studio 600) → lifts heavy-Standard floor 53% → ~69%. Kept 1/2/3 for now (simpler, still ≥50%).
+- **Biggest unused lever:** `media_resolution:"low"` (66 vs 258 tok/frame) ≈ 4× cheaper video → would push floors to ~70%+. Test on the 20-clip set first.
+
+### Payments — Dodo (Merchant of Record)
+- Dodo products: **Pro $9/mo**, **Studio $19/mo** (edit the existing Pro $24 → $9, add Studio).
+- Keep credits in **our Supabase** (`profiles.credits` + weighted `consume_credit`) — don't use Dodo Credits/Meters.
+- Flow: Upgrade button → Dodo checkout (metadata: user_id) → webhook `/api/webhooks/dodo` → set `plan` + refill `credits` on `subscription.active`/`renewed`; downgrade to free on `cancelled`/`expired`. Env: `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`.
+
+---
+
+## 🔄 UPDATE — June 29, 2026 (SUPERSEDED by the June 30 price cut above)
 
 COGS re-derived from the **actual** `analyze` + `generate-code` engineering (not estimates), at **₹95/$**. Margins are **rate-independent** — revenue (Dodo, USD) and cost (Gemini, USD) are both USD, so the ₹ rate only changes ₹ labels, not the %.
 

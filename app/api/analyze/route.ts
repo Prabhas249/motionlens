@@ -1053,6 +1053,7 @@ export async function POST(req: Request) {
   // Credit bookkeeping — so we can refund the run if the engine errors after charging.
   let supa: Awaited<ReturnType<typeof createClient>> | null = null;
   let charged = false;
+  let creditCost = 1; // credits this run spends (Standard 1 / Annotated 2 / Precision 3) — for refund on error
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -1064,22 +1065,26 @@ export async function POST(req: Request) {
     const file = form.get("video");
     if (!(file instanceof File)) return Response.json({ error: "No video uploaded." }, { status: 400 });
 
-    // --- auth + free-run credit gate ---
-    // Each analysis spends one run. New users start with 5 (see the profiles
-    // migration). consume_credit() atomically decrements and returns what's
-    // left, or NULL when they're out.
+    // Mode decides how many credits the run spends: Standard 1, Annotated 2, Precision 3.
+    const modeRaw = form.get("mode");
+    const mode = modeRaw === "precision" || modeRaw === "annotated" ? modeRaw : "standard";
+    creditCost = mode === "precision" ? 3 : mode === "annotated" ? 2 : 1;
+
+    // --- auth + mode-weighted credit gate ---
+    // New users start with 5 credits (see the profiles migration). consume_credit
+    // atomically deducts `creditCost` and returns what's left, or NULL if short.
     supa = await createClient();
     const { data: { user } } = await supa.auth.getUser();
     if (!user) {
       return Response.json({ error: "Please sign in to run an analysis." }, { status: 401 });
     }
-    const { data: remaining, error: creditErr } = await supa.rpc("consume_credit");
+    const { data: remaining, error: creditErr } = await supa.rpc("consume_credit", { p_amount: creditCost });
     if (creditErr) {
-      return Response.json({ error: "Couldn't check your runs — please try again." }, { status: 500 });
+      return Response.json({ error: "Couldn't check your credits — please try again." }, { status: 500 });
     }
     if (remaining === null || remaining === undefined) {
       return Response.json(
-        { error: "You've used all 5 free runs. Upgrade to keep analyzing." },
+        { error: `Not enough credits — a ${mode} analysis costs ${creditCost}. Upgrade for more.` },
         { status: 402 },
       );
     }
@@ -1096,8 +1101,6 @@ IS that effect (e.g. "the cursor animation when clicked" = the click-burst feedb
 is the MAIN subject to describe fully, with every click instance. Treat only genuinely-unrelated parts
 as secondary. The summary, timeline, motion, storyboard, and agent_prompt must all center on the focus.`
       : "";
-    const modeRaw = form.get("mode");
-    const mode = modeRaw === "precision" || modeRaw === "annotated" ? modeRaw : "standard";
 
     // Optional final-frame SCREENSHOT companion — a sharp, full-res still of the end state. The video gives
     // MOTION; the screenshot gives EXACT pixels (colors/sizes/fonts/layout). Sent as an inline image part.
@@ -1319,6 +1322,22 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       return buildStoryboard(tmp, { timeline: blueprint.timeline });
     };
 
+    // Save to the user's history (best effort — never block the result on it).
+    try {
+      const title =
+        typeof blueprint?.summary === "string" && blueprint.summary.trim()
+          ? blueprint.summary.trim().slice(0, 90)
+          : "Untitled analysis";
+      await supa.from("analyses").insert({
+        user_id: user.id,
+        title,
+        mode,
+        blueprint,
+      });
+    } catch {
+      /* ignore history write failures */
+    }
+
     // Stream NDJSON: blueprint line first (renders immediately), then the frames line.
     const enc = new TextEncoder();
     const stream = new ReadableStream({
@@ -1341,7 +1360,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
   } catch (err) {
     // The run failed after we charged a credit — give it back (best effort).
     if (charged && supa) {
-      try { await supa.rpc("refund_credit"); } catch { /* ignore */ }
+      try { await supa.rpc("refund_credit", { p_amount: creditCost }); } catch { /* ignore */ }
     }
     const raw = err instanceof Error ? err.message : "Unknown error";
     // Never leak the underlying provider in user-facing errors — the engine is "MotionLens".

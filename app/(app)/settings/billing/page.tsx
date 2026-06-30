@@ -34,7 +34,7 @@ export default async function BillingPage() {
           </div>
           <CardDescription>
             {isFree
-              ? "You're on the free plan — 5 runs to try MotionLens."
+              ? "You're on the free plan — 5 credits to try MotionLens."
               : "Thanks for being on a paid plan."}
           </CardDescription>
         </CardHeader>
@@ -44,8 +44,11 @@ export default async function BillingPage() {
               <p className="text-2xl font-semibold tabular-nums">
                 {profile.credits}
                 <span className="text-base font-normal text-muted-foreground">
-                  {isFree ? ` / ${FREE_GRANT}` : ""} runs left
+                  {isFree ? ` / ${FREE_GRANT}` : ""} credits left
                 </span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Standard 1 · Annotated 2 · Precision 3 · code export free
               </p>
             </div>
           </div>
@@ -63,7 +66,7 @@ export default async function BillingPage() {
       <div>
         <h2 className="mb-1 font-medium">Plans</h2>
         <p className="mb-4 text-sm text-muted-foreground">
-          Upgrade for more runs each month. Code export is always free.
+          Upgrade for more credits each month. Code export is always free.
         </p>
         <BillingPlans currentPlan={profile.plan} />
       </div>

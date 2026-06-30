@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-// Returns the signed-in user's remaining free runs + plan, for the dashboard badge.
+// Returns the signed-in user's remaining credits + plan, for the dashboard badge.
 export async function GET() {
   const supabase = await createClient();
   const {
