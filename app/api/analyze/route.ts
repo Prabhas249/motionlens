@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
 import { r2GetBytes, r2Put, r2Delete } from "@/lib/r2";
+import { FFMPEG } from "@/lib/ffmpeg";
 import sharp from "sharp";
 import { writeFile, readFile, unlink, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -575,11 +576,18 @@ async function annotateFrame(
 
 async function getDuration(videoPath: string): Promise<number> {
   try {
-    const { stdout } = await pexecFile("ffprobe", [
-      "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", videoPath,
-    ]);
-    const d = parseFloat(stdout.trim());
-    if (d && isFinite(d) && d > 0) return d;
+    // ffmpeg prints "Duration: HH:MM:SS.ss" to stderr while reading the header.
+    // With no output file it exits non-zero, so we read stderr off the rejection.
+    // (Avoids bundling a second ffprobe binary — ffmpeg-static is ffmpeg-only.)
+    const out = await pexecFile(FFMPEG, ["-hide_banner", "-i", videoPath]).then(
+      (r) => r.stderr,
+      (e: { stderr?: string }) => e?.stderr || "",
+    );
+    const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(out);
+    if (m) {
+      const d = (+m[1]) * 3600 + (+m[2]) * 60 + parseFloat(m[3]);
+      if (isFinite(d) && d > 0) return d;
+    }
   } catch {}
   return 3;
 }
@@ -830,7 +838,7 @@ function detectRepeats(samples: { t: number; e: number }[], spans: Span[]): Repe
 
 async function grabFile(videoPath: string, t: number, out: string): Promise<string | null> {
   try {
-    await pexecFile("ffmpeg", [
+    await pexecFile(FFMPEG, [
       "-ss", Math.max(0, t).toFixed(2), "-i", videoPath, "-frames:v", "1",
       "-vf", "scale='min(1080,iw)':-2", "-q:v", "2", "-y", out,
     ]);
@@ -1028,7 +1036,7 @@ async function buildStoryboard(
   if (start) candidates.push(start);
   const scenePrefix = `mlsc-${base}-`;
   try {
-    await pexecFile("ffmpeg", [
+    await pexecFile(FFMPEG, [
       "-i", videoPath, "-vf", "select='gt(scene,0.05)',scale='min(1080,iw)':-2",
       "-fps_mode", "vfr", "-frames:v", "9", "-q:v", "2", "-y",
       join(dir, `${scenePrefix}%03d.jpg`),
@@ -1364,7 +1372,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          controller.enqueue(enc.encode(JSON.stringify({ type: "blueprint", blueprint, mode }) + "\n"));
+          controller.enqueue(enc.encode(JSON.stringify({ type: "blueprint", blueprint, mode, analysisId }) + "\n"));
           const frames = await buildFrames();
           controller.enqueue(enc.encode(JSON.stringify({ type: "frames", frames }) + "\n"));
         } catch {
@@ -1375,7 +1383,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
           if (analysisId && tmp && supa) {
             const outPath = join(tmpdir(), `keep-${analysisId}.mp4`);
             try {
-              await pexecFile("ffmpeg", [
+              await pexecFile(FFMPEG, [
                 "-y", "-i", tmp,
                 "-vf", "scale=-2:'min(720,ih)'",
                 "-c:v", "libx264", "-crf", "30", "-preset", "veryfast",

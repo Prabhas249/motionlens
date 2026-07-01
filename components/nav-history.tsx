@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -69,6 +69,16 @@ export function NavHistory() {
                 isActive={activeId === it.id}
                 className="h-auto items-start gap-2 py-1.5"
                 render={<a href={`/dashboard?a=${it.id}`} />}
+                onClick={(e: MouseEvent) => {
+                  // Let cmd/ctrl/middle-click open a new tab normally.
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                  e.preventDefault();
+                  setActiveId(it.id);
+                  window.history.replaceState(null, "", `/dashboard?a=${it.id}`);
+                  window.dispatchEvent(
+                    new CustomEvent("load-analysis", { detail: { id: it.id } }),
+                  );
+                }}
               >
                 <span className="min-w-0 flex-1 truncate text-foreground/75">
                   {it.title || "Untitled analysis"}

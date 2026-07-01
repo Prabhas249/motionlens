@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { AppShell } from "@/components/app-shell"
 import { AnalysisInput } from "@/components/analysis-input"
@@ -42,28 +42,43 @@ export default function Page() {
   const [error, setError] = useState("")
   const [storyboardLoading, setStoryboardLoading] = useState(false)
   const [clipUrl, setClipUrl] = useState<string | null>(null)
+  const [analysisId, setAnalysisId] = useState<string | null>(null)
+  const [savedCode, setSavedCode] = useState<Record<string, string>>({})
 
-  // Reopen a saved analysis from the sidebar history (/dashboard?a=<id>).
+  // Load a saved analysis into the view — no page reload, so no flicker.
+  const loadAnalysis = useCallback(async (id: string) => {
+    try {
+      const r = await fetch(`/api/history/${id}`, { cache: "no-store" })
+      if (!r.ok) return
+      const data = await r.json()
+      if (data?.blueprint) {
+        setBlueprint(data.blueprint as Blueprint)
+        if (data.mode) setMode(data.mode as Mode)
+        setFrames([])
+        setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
+        setAnalysisId(data.id ?? id)
+        setSavedCode(data.code && typeof data.code === "object" ? data.code : {})
+        setStoryboardLoading(false)
+        setError("")
+        setPhase("idle")
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  // Open from a deep link (?a=<id>) and from sidebar clicks (a custom event, so
+  // there's no navigation → no flicker and the history list doesn't reload).
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("a")
-    if (!id) return
-    ;(async () => {
-      try {
-        const r = await fetch(`/api/history/${id}`, { cache: "no-store" })
-        if (!r.ok) return
-        const data = await r.json()
-        if (data?.blueprint) {
-          setBlueprint(data.blueprint as Blueprint)
-          if (data.mode) setMode(data.mode as Mode)
-          setFrames([])
-          setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
-          setPhase("idle")
-        }
-      } catch {
-        /* ignore */
-      }
-    })()
-  }, [])
+    if (id) void loadAnalysis(id)
+    const onLoad = (e: Event) => {
+      const detail = (e as CustomEvent<{ id?: string }>).detail
+      if (detail?.id) void loadAnalysis(detail.id)
+    }
+    window.addEventListener("load-analysis", onLoad as EventListener)
+    return () => window.removeEventListener("load-analysis", onLoad as EventListener)
+  }, [loadAnalysis])
 
   const busy = phase === "uploading" || phase === "analyzing"
 
@@ -76,6 +91,8 @@ export default function Page() {
     setBlueprint(null)
     setFrames([])
     setClipUrl(null)
+    setAnalysisId(null)
+    setSavedCode({})
     setProgress(0)
     setError("")
     setStoryboardLoading(false)
@@ -127,6 +144,8 @@ export default function Page() {
             setFrames([])
             setStoryboardLoading(true)
             setPhase("idle")
+            setAnalysisId(typeof msg.analysisId === "string" ? msg.analysisId : null)
+            setSavedCode({})
             // credits were just spent — refresh the credits badge + history
             window.dispatchEvent(new Event("credits-updated"))
           } else if (msg.type === "frames") {
@@ -170,6 +189,8 @@ export default function Page() {
     setBlueprint(null)
     setFrames([])
     setClipUrl(null)
+    setAnalysisId(null)
+    setSavedCode({})
     setError("")
     setStoryboardLoading(false)
     setPhase("idle")
@@ -197,6 +218,8 @@ export default function Page() {
             busy={busy}
             phase={phase}
             storyboardLoading={storyboardLoading}
+            analysisId={analysisId}
+            savedCode={savedCode}
             onReset={reset}
             onCorrection={onCorrection}
           />

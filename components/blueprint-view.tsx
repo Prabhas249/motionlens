@@ -49,6 +49,8 @@ export function BlueprintView({
   busy,
   phase,
   storyboardLoading = false,
+  analysisId = null,
+  savedCode,
   onReset,
   onCorrection,
 }: {
@@ -58,6 +60,8 @@ export function BlueprintView({
   busy: boolean;
   phase: "idle" | "uploading" | "analyzing" | "error";
   storyboardLoading?: boolean;
+  analysisId?: string | null;
+  savedCode?: Record<string, string>;
   onReset: () => void;
   onCorrection: (c: unknown) => void;
 }) {
@@ -67,6 +71,10 @@ export function BlueprintView({
   const [genning, setGenning] = React.useState(false);
   const [codeCopied, setCodeCopied] = React.useState(false);
   const [elapsed, setElapsed] = React.useState(0);
+  // Code already generated for this analysis (framework → code). Seeded from the
+  // saved copy on load and filled as new frameworks are generated, so we never
+  // regenerate the same thing twice (reopening history is instant).
+  const codeCacheRef = React.useRef<Record<string, string>>({});
 
   React.useEffect(() => {
     if (!busy) {
@@ -83,6 +91,14 @@ export function BlueprintView({
 
   async function genCode(fw?: string) {
     if (!bp) return;
+    const useFw = fw ?? framework;
+    // Already have this framework's code? Show it instantly — no regeneration.
+    const cached = codeCacheRef.current[useFw];
+    if (cached) {
+      setGenning(false);
+      setCode(cached);
+      return;
+    }
     setGenning(true);
     setCode("");
     const strip = (s: string) => s.replace(/^```[a-z]*\n?/i, "").replace(/\n?```\s*$/i, "");
@@ -90,7 +106,7 @@ export function BlueprintView({
       const res = await fetch("/api/generate-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blueprint: bp, framework: fw ?? framework, frames: frames.map((f) => f.img) }),
+        body: JSON.stringify({ blueprint: bp, framework: useFw, frames: frames.map((f) => f.img) }),
       });
       if (!res.ok || !res.body) {
         setCode("Failed to generate code.");
@@ -106,7 +122,19 @@ export function BlueprintView({
         acc += decoder.decode(value, { stream: true });
         setCode(strip(acc));
       }
-      setCode(strip(acc).trim());
+      const final = strip(acc).trim();
+      setCode(final);
+      // Cache locally + persist onto the analysis so reopening never regenerates.
+      if (final && final !== "Failed to generate code.") {
+        codeCacheRef.current[useFw] = final;
+        if (analysisId) {
+          fetch("/api/save-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: analysisId, framework: useFw, code: final }),
+          }).catch(() => {});
+        }
+      }
     } catch {
       setCode("Failed to generate code.");
     } finally {
@@ -114,12 +142,15 @@ export function BlueprintView({
     }
   }
 
-  // Auto-generate code the moment a NEW analysis loads — no manual press needed.
+  // Auto-load code when an analysis loads: reuse the saved copy if present,
+  // otherwise generate it once (fresh runs). Never regenerates on reopen.
   React.useEffect(() => {
     setCodeCopied(false);
     if (blueprint) {
+      codeCacheRef.current = { ...(savedCode ?? {}) };
       void genCode();
     } else {
+      codeCacheRef.current = {};
       setCode("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
