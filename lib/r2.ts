@@ -1,3 +1,4 @@
+import { request as httpsRequest } from "node:https";
 import { AwsClient } from "aws4fetch";
 
 // Cloudflare R2 (S3-compatible) — clips live here: free egress, no 50MB cap.
@@ -44,13 +45,30 @@ export async function r2GetBytes(key: string): Promise<Buffer | null> {
 }
 
 // Server-side upload of the compressed clip we keep for replay.
+// NOT via fetch: Vercel's runtime streams multi-MB fetch bodies as
+// Transfer-Encoding: chunked with no Content-Length, and R2 rejects that with
+// 411 MissingContentLength (small bodies get buffered, which is why this only
+// broke for real clips/storyboards). A presigned URL + node:https with an
+// explicit Content-Length sidesteps the fetch wrapper entirely — the exact
+// path the browser upload already uses.
 export async function r2Put(key: string, body: Buffer, contentType: string): Promise<boolean> {
-  const res = await r2.fetch(objUrl(key), {
-    method: "PUT",
-    body: new Uint8Array(body),
-    headers: { "Content-Type": contentType },
+  const url = new URL(await presignPut(key, 600));
+  return new Promise((resolve) => {
+    const req = httpsRequest(
+      {
+        hostname: url.hostname,
+        path: url.pathname + url.search,
+        method: "PUT",
+        headers: { "Content-Type": contentType, "Content-Length": body.length },
+      },
+      (res) => {
+        res.resume();
+        res.on("end", () => resolve((res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300));
+      },
+    );
+    req.on("error", () => resolve(false));
+    req.end(body);
   });
-  return res.ok;
 }
 
 export async function r2Delete(key: string): Promise<void> {

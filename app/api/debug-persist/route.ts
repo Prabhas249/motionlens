@@ -95,30 +95,13 @@ export async function GET(req: Request) {
     }
   }
   report.r2_put_lib = libTries;
-  // and one payload closer to a real clip (2MB) — size-dependent failures.
-  // Raw status + error body, plus response headers (WAF/proxy fingerprints).
+  // and one payload closer to a real clip (2MB) through the FIXED r2Put
+  // (presigned URL + node:https + explicit Content-Length).
   try {
-    const { AwsClient } = await import("aws4fetch");
-    const r2 = new AwsClient({
-      accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
-      service: "s3",
-      region: "auto",
-    });
-    const url = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${process.env.R2_BUCKET}/debug/lib-probe-big.bin`;
     const big = Buffer.alloc(2 * 1024 * 1024, 7);
-    const res = await r2.fetch(url, {
-      method: "PUT",
-      body: new Uint8Array(big),
-      headers: { "Content-Type": "video/mp4" },
-    });
-    report.r2_put_lib_2mb = `${res.status} ${res.statusText}`;
-    if (!res.ok) {
-      report.r2_put_2mb_body = (await res.text()).slice(0, 600);
-      report.r2_put_2mb_headers = Object.fromEntries(res.headers.entries());
-    } else {
-      await r2Delete("debug/lib-probe-big.bin");
-    }
+    const ok = await r2Put("debug/lib-probe-big.bin", big, "video/mp4");
+    report.r2_put_lib_2mb = ok ? "ok" : "not-ok";
+    if (ok) await r2Delete("debug/lib-probe-big.bin");
   } catch (e) {
     report.r2_put_lib_2mb = `ERROR: ${e instanceof Error ? e.message : String(e)}`;
   }
