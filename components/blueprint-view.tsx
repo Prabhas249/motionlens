@@ -66,6 +66,9 @@ export function BlueprintView({
   onCorrection: (c: unknown) => void;
 }) {
   const [copied, setCopied] = React.useState(false);
+  // Enlarged storyboard frame (click a frame / ⤢ on an annotated one). For
+  // annotated frames the src is the CANVAS export, so callouts + nudges show.
+  const [lightbox, setLightbox] = React.useState<{ src: string; caption?: string } | null>(null);
   const [framework, setFramework] = React.useState("Framer Motion");
   const [code, setCode] = React.useState("");
   const [genning, setGenning] = React.useState(false);
@@ -85,6 +88,13 @@ export function BlueprintView({
     const id = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(id);
   }, [busy]);
+
+  React.useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setLightbox(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   const bp = blueprint;
   const conf = bp?.confidence ? CONF[bp.confidence.toLowerCase()] ?? CONF.medium : null;
@@ -252,12 +262,22 @@ export function BlueprintView({
                         index={i}
                         isLast={i === frames.length - 1}
                         onCorrection={onCorrection}
+                        onExpand={(src) =>
+                          setLightbox({ src, caption: f.annotations?.[0]?.label || f.label })
+                        }
                       />
                     </div>
                   ) : (
                     <div key={i} className="min-w-[200px] max-w-[280px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={f.img} alt={`frame ${i + 1}`} className="w-full rounded-lg border" />
+                      <button
+                        type="button"
+                        className="block w-full cursor-zoom-in"
+                        onClick={() => setLightbox({ src: f.img, caption: f.label || `Moment ${i + 1}` })}
+                        aria-label={`Enlarge frame ${i + 1}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={f.img} alt={`frame ${i + 1}`} className="w-full rounded-lg border" />
+                      </button>
                       <p className="mt-1.5 text-xs text-muted-foreground">{f.label || `Moment ${i + 1}`}</p>
                     </div>
                   ),
@@ -431,6 +451,27 @@ export function BlueprintView({
           </Section>
         </div>
       </div>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex cursor-zoom-out flex-col items-center justify-center gap-3 bg-black/85 p-6 backdrop-blur-sm"
+          onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Enlarged storyboard frame"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox.src}
+            alt={lightbox.caption || "storyboard frame"}
+            className="max-h-[85vh] max-w-[92vw] rounded-lg border object-contain"
+          />
+          {lightbox.caption && (
+            <p className="max-w-xl text-center text-sm text-muted-foreground">{lightbox.caption}</p>
+          )}
+          <span className="text-[11px] text-muted-foreground/60">click anywhere or press Esc to close</span>
+        </div>
+      )}
     </div>
   );
 }
