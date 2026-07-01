@@ -66,10 +66,19 @@ export async function POST(req: Request) {
       currentCredits + Math.max(0, cfg.credits - currentGrant),
       cfg.credits,
     );
-    await admin
-      .from("profiles")
-      .update({ plan, credits: newCredits })
-      .eq("id", profile.userId);
+    // Dodo resets next_billing_date on a change-plan, so the renewed-webhook this
+    // switch fires looks like a "new period". Claim that period here so the webhook
+    // sees it's already granted and leaves our prorated delta alone.
+    let period = "";
+    try {
+      const s = await dodoFetch(`/subscriptions/${subId}`);
+      if (s.ok) period = ((await s.json())?.next_billing_date as string) || "";
+    } catch {
+      /* ignore — webhook still won't over-refill for the same period */
+    }
+    const update: Record<string, unknown> = { plan, credits: newCredits };
+    if (period) update.credit_period = period;
+    await admin.from("profiles").update(update).eq("id", profile.userId);
     return Response.json({ changed: true, plan });
   }
 
