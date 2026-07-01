@@ -12,7 +12,7 @@ import { HowItWorksSection } from "@marketing/components/section/how-it-works-se
 
 export default function Home() {
   return (
-    <main className="flex w-full flex-col pt-16">
+    <main className="flex w-full flex-col">
       {/* hero: no side lines, open background */}
       <HeroSection />
       {/* framed column starts at the examples strip */}
