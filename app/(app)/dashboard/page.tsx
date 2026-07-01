@@ -54,7 +54,7 @@ export default function Page() {
       if (data?.blueprint) {
         setBlueprint(data.blueprint as Blueprint)
         if (data.mode) setMode(data.mode as Mode)
-        setFrames([])
+        setFrames(Array.isArray(data.frames) ? (data.frames as Frame[]) : [])
         setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
         setAnalysisId(data.id ?? id)
         setSavedCode(data.code && typeof data.code === "object" ? data.code : {})

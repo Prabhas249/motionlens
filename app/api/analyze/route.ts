@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdmin } from "@supabase/supabase-js";
 import { r2GetBytes, r2Put, r2Delete } from "@/lib/r2";
 import { FFMPEG } from "@/lib/ffmpeg";
 import sharp from "sharp";
@@ -1371,33 +1372,53 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     const enc = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        let frames: unknown[] = [];
         try {
           controller.enqueue(enc.encode(JSON.stringify({ type: "blueprint", blueprint, mode, analysisId }) + "\n"));
-          const frames = await buildFrames();
+          frames = await buildFrames();
           controller.enqueue(enc.encode(JSON.stringify({ type: "frames", frames }) + "\n"));
         } catch {
           controller.enqueue(enc.encode(JSON.stringify({ type: "frames", frames: [] }) + "\n"));
         } finally {
-          // Keep a compressed 720p copy in R2 for replay — do it BEFORE closing so
-          // the function stays alive (Vercel can freeze once the response is done).
-          if (analysisId && tmp && supa) {
-            const outPath = join(tmpdir(), `keep-${analysisId}.mp4`);
-            try {
-              await pexecFile(FFMPEG, [
-                "-y", "-i", tmp,
-                "-vf", "scale=-2:'min(720,ih)'",
-                "-c:v", "libx264", "-crf", "30", "-preset", "veryfast",
-                "-movflags", "+faststart", "-an", outPath,
-              ]);
-              const small = await readFile(outPath);
-              const finalKey = `${user.id}/clips/${analysisId}.mp4`;
-              if (await r2Put(finalKey, small, "video/mp4")) {
-                await supa.from("analyses").update({ clip_key: finalKey }).eq("id", analysisId);
-              }
-            } catch {
-              /* keep the analysis even if the clip copy fails */
-            } finally {
-              await unlink(outPath).catch(() => {});
+          // Persist the clip + storyboard to R2 so History can replay them. Done
+          // BEFORE closing so the function stays alive (Vercel can freeze once the
+          // response is sent). analyses has no UPDATE RLS policy → service role.
+          if (analysisId) {
+            const media: Record<string, string> = {};
+            // Storyboard frames → R2 (json blob) for reopening.
+            if (frames.length) {
+              try {
+                const framesKey = `${user.id}/frames/${analysisId}.json`;
+                if (await r2Put(framesKey, Buffer.from(JSON.stringify(frames)), "application/json")) {
+                  media.frames_key = framesKey;
+                }
+              } catch { /* keep the analysis even if the storyboard copy fails */ }
+            }
+            // Compressed 720p clip → R2 for replay.
+            if (tmp) {
+              const outPath = join(tmpdir(), `keep-${analysisId}.mp4`);
+              try {
+                await pexecFile(FFMPEG, [
+                  "-y", "-i", tmp,
+                  "-vf", "scale=-2:'min(720,ih)'",
+                  "-c:v", "libx264", "-crf", "30", "-preset", "veryfast",
+                  "-movflags", "+faststart", "-an", outPath,
+                ]);
+                const small = await readFile(outPath);
+                const clipKeyFinal = `${user.id}/clips/${analysisId}.mp4`;
+                if (await r2Put(clipKeyFinal, small, "video/mp4")) media.clip_key = clipKeyFinal;
+              } catch { /* keep the analysis even if the clip copy fails */ }
+              finally { await unlink(outPath).catch(() => {}); }
+            }
+            if (Object.keys(media).length) {
+              try {
+                const adminSb = createAdmin(
+                  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+                  { auth: { autoRefreshToken: false, persistSession: false } },
+                );
+                await adminSb.from("analyses").update(media).eq("id", analysisId);
+              } catch { /* ignore */ }
             }
           }
           controller.close();

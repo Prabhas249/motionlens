@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { presignGet, r2Delete } from "@/lib/r2";
+import { presignGet, r2Delete, r2GetBytes } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("analyses")
-    .select("id, title, mode, blueprint, clip_key, code, created_at")
+    .select("id, title, mode, blueprint, clip_key, frames_key, code, created_at")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -32,7 +32,17 @@ export async function GET(
       /* clip may be gone — reload still works without replay */
     }
   }
-  return Response.json({ ...data, clipUrl });
+  // Rehydrate the storyboard from R2 so reopening shows it.
+  let frames: unknown[] = [];
+  if (data.frames_key) {
+    try {
+      const buf = await r2GetBytes(data.frames_key as string);
+      if (buf) frames = JSON.parse(buf.toString("utf8"));
+    } catch {
+      /* storyboard missing — reload still works without it */
+    }
+  }
+  return Response.json({ ...data, clipUrl, frames });
 }
 
 // Delete a saved analysis (and its stored clip).
@@ -49,11 +59,12 @@ export async function DELETE(
 
   const { data } = await supabase
     .from("analyses")
-    .select("clip_key")
+    .select("clip_key, frames_key")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
   if (data?.clip_key) await r2Delete(data.clip_key as string);
+  if (data?.frames_key) await r2Delete(data.frames_key as string);
 
   await supabase.from("analyses").delete().eq("id", id).eq("user_id", user.id);
   return Response.json({ ok: true });
