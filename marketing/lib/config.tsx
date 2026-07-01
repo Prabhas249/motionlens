@@ -51,20 +51,11 @@ export const siteConfig = {
     },
     nav: {
         links: [
-            {
-                id: 1,
-                name: "Products",
-                href: "#",
-                submenu: [
-                    { id: 1, icon: <Icons.code className="size-4 text-muted-foreground" />, name: "Code Generation", href: "#code-generation", description: "AI-powered code generation", image: "/instant-integration.png" },
-                    { id: 2, icon: <Icons.code className="size-4 text-muted-foreground" />, name: "Code Review", href: "#code-review", description: "Automated code review", image: "/instant-integration.png   " },
-                    { id: 3, icon: <Icons.code className="size-4 text-muted-foreground" />, name: "Code Refactoring", href: "#refactoring", description: "Smart code refactoring", image: "/instant-integration.png" },
-                ]
-            },
-            { id: 2, name: "features", href: "#" },
-            { id: 3, name: "pricing", href: "#" },
-            { id: 4, name: "Docs", href: "#" },
-            { id: 5, name: "Company", href: "#" },
+            { id: 1, name: "Home", href: "#hero" },
+            { id: 2, name: "How it works", href: "#how-it-works" },
+            { id: 3, name: "Examples", href: "#examples" },
+            { id: 4, name: "Pricing", href: "#pricing" },
+            { id: 5, name: "FAQ", href: "#faq" },
         ],
     },
     hero: {

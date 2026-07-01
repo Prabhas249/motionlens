@@ -1050,6 +1050,7 @@ async function buildStoryboard(
 // ---------- handler ----------
 export async function POST(req: Request) {
   let tmpPath: string | null = null;
+  let clipPath: string | null = null; // the Storage object to clean up (any exit path)
   // Credit bookkeeping — so we can refund the run if the engine errors after charging.
   let supa: Awaited<ReturnType<typeof createClient>> | null = null;
   let charged = false;
@@ -1068,6 +1069,7 @@ export async function POST(req: Request) {
     if (typeof videoPath !== "string" || !videoPath) {
       return Response.json({ error: "No video uploaded." }, { status: 400 });
     }
+    clipPath = videoPath;
 
     // Mode decides how many credits the run spends: Standard 1, Annotated 2, Precision 3.
     const modeRaw = form.get("mode");
@@ -1380,5 +1382,9 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     return Response.json({ error: `MotionLens engine error: ${clean}` }, { status: 500 });
   } finally {
     if (tmpPath) await unlink(tmpPath).catch(() => {});
+    // Remove the uploaded clip on every exit path (incl. out-of-credits / errors).
+    if (supa && clipPath) {
+      try { await supa.storage.from("clips").remove([clipPath]); } catch { /* ignore */ }
+    }
   }
 }
