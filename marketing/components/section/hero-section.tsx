@@ -12,13 +12,8 @@ export function HeroSection() {
     return (
         <section
             id="hero"
-            className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden border-x border-b border-border px-4 py-16 md:py-24"
+            className="relative flex min-h-svh w-full flex-col items-center justify-center overflow-hidden px-4 py-16 md:py-24"
         >
-            {/* clean editorial background — replaces the photographic sky */}
-            <div className="pointer-events-none absolute inset-0 -z-10 [background:radial-gradient(125%_125%_at_50%_10%,var(--background)_40%,var(--secondary)_100%)]" />
-            {/* subtle on-brand cobalt glow near the top */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[60vh] [background:radial-gradient(60%_50%_at_50%_0%,rgba(42,72,240,0.10),transparent_70%)]" />
-
             <HeroLogos className="z-20 hidden md:block" />
             <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center justify-center space-y-6 text-center">
                 <HeaderBadge

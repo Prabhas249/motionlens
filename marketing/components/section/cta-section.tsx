@@ -1,6 +1,6 @@
+import Image from "next/image";
+import Link from "next/link";
 import { siteConfig } from "@marketing/lib/config";
-import { Button } from "@marketing/components/ui/button";
-import { cn } from "@marketing/lib/utils";
 
 export function CTASection() {
     const { ctaSection } = siteConfig;
@@ -8,36 +8,33 @@ export function CTASection() {
     return (
         <section
             id={ctaSection.id}
-            className="relative flex flex-col items-center justify-center px-4 py-20 md:py-32 overflow-hidden"
+            className="flex w-full flex-col items-center justify-center"
         >
-            <div className="absolute inset-0 -z-1 h-full w-full bg-radial-[at_45%_85%] from-[#2CD5FF]/40 via-[#2C30FF]/4 mask-[linear-gradient(to_bottom,transparent,black_100%)]" />
-            <div className="absolute inset-0 -z-1 h-full w-full bg-radial-[at_45%_68%] from-[#2CD5FF]/68 via-[#2C30FF]/3 mask-[linear-gradient(to_bottom,transparent,black_100%)] blur-[50px]" />
-
-            {/* Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-6 max-w-4xl mx-auto">
-                {/* Heading */}
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tighter    text-balance">
-                    {ctaSection.title}
-                </h2>
-                <p className="text-muted-foreground text-center text-balance font-medium max-w-2xl mx-auto">
-                    {ctaSection.subtext}
-                </p>
-
-                {/* CTA Button */}
-                <div className="pt-2">
-                    <Button
-                        asChild
-                        size="lg"
-                        className={cn(
-                            "rounded-full px-8 py-6 text-base font-medium text-primary-foreground",
-                            "bg-linear-to-b from-[#4F6BF6] to-[#2A48F0]",
-                            "shadow-[0px_1px_2px_0px_#00000016,0px_2px_4px_0px_#00000006,inset_0px_0px_1.5px_#2A48F0,inset_0px_2.5px_0px_#ffffff16,inset_0px_0px_2.5px_#ffffff08] ring-2 ring-[#2A48F0] hover:from-[#2A48F0] hover:to-[#1E37C9]",
-                        )}
-                    >
-                        <a href={ctaSection.button.href}>
-                            {ctaSection.button.text}
-                        </a>
-                    </Button>
+            <div className="w-full">
+                <div className="relative z-20 h-[400px] w-full overflow-hidden rounded-xl border border-[#2A48F0] bg-gradient-to-b from-[#3A57F5] to-[#2A48F0] shadow-xl md:h-[400px]">
+                    <Image
+                        src={ctaSection.backgroundImage}
+                        alt="MotionLens CTA background"
+                        className="absolute inset-0 h-full w-full object-cover object-right opacity-90 md:object-center"
+                        fill
+                        priority
+                    />
+                    <div className="absolute inset-0 -top-32 flex flex-col items-center justify-center md:-top-40">
+                        <h2 className="max-w-xs text-center text-4xl font-medium tracking-tighter text-white md:max-w-xl md:text-7xl">
+                            {ctaSection.title}
+                        </h2>
+                        <div className="absolute bottom-10 flex flex-col items-center justify-center gap-2">
+                            <Link
+                                href={ctaSection.button.href}
+                                className="flex h-10 w-fit items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-black shadow-md transition-transform hover:scale-[1.02] active:scale-95"
+                            >
+                                {ctaSection.button.text}
+                            </Link>
+                            <span className="text-sm text-white/90">
+                                {ctaSection.subtext}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

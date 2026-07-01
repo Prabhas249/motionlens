@@ -12,9 +12,9 @@ import { HowItWorksSection } from "@marketing/components/section/how-it-works-se
 
 export default function Home() {
   return (
-    <main className="flex flex-col">
-      <HeroSection />
-      <div className="border-x border-border divide-y divide-border">
+    <main className="flex w-full flex-col">
+      <div className="flex flex-col divide-y divide-border">
+        <HeroSection />
         <ExamplesSection />
         <HowItWorksSection />
         <WorkflowConnectSection />

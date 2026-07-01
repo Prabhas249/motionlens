@@ -27,7 +27,7 @@ export function PlanSearchCard({ rootRef, status, showDialog, showTyping, showRe
             {showResult ? (
                 <p className="text-sm font-medium">Break down this launch animation</p>
             ) : showTyping ? (
-                <TypingAnimation words={["Break down this launch animation", "Analyze hero.mov — timing + easing", "Paste a link, analyze any site"]} loop className="text-sm font-medium" />
+                <TypingAnimation words={["Break down this launch animation", "Analyze hero.mov — timing + easing", "Paste a link, analyze any site"]} loop startOnView={false} className="text-sm font-medium" />
             ) : (
                 <p className="text-sm font-medium">Ask your agent</p>
             )}

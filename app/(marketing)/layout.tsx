@@ -50,7 +50,7 @@ export default function MarketingLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div
-      className={`${geistSans.variable} ${geistMono.variable} ${pixelFontVars} antialiased font-sans px-4 lg:px-0 overflow-x-hidden`}
+      className={`${geistSans.variable} ${geistMono.variable} ${pixelFontVars} antialiased font-sans overflow-x-clip`}
     >
       <ThemeProvider
         attribute="class"
@@ -58,7 +58,11 @@ export default function MarketingLayout({
         enableSystem
         disableTransitionOnChange
       >
-        <div className="max-w-7xl mx-auto">
+        <div className="relative mx-auto max-w-7xl border-x border-border">
+          {/* editorial gradient — spans behind the navbar AND the hero */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-svh [background:radial-gradient(125%_125%_at_50%_10%,var(--background)_40%,var(--secondary)_100%)]" />
+          {/* subtle on-brand cobalt glow at the very top */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[65vh] [background:radial-gradient(60%_50%_at_50%_0%,rgba(42,72,240,0.10),transparent_70%)]" />
           <Navbar />
           {children}
         </div>

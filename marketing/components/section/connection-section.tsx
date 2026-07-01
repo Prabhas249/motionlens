@@ -28,7 +28,10 @@ export function ConnectSection() {
     const mobileIntegrationsInView = useInView(mobileIntegrationsRef, { margin: "-150px 0px -60% 0px", once: false });
     const mobileSourcesInView = useInView(mobileSourcesRef, { margin: "-150px 0px -60% 0px", once: false });
 
-    const status = useConnectionStatus(planInView);
+    // Drive "connecting → connected" off the whole animation zone (any step in view),
+    // not just step 1 — otherwise the badge resets to idle the moment step 1 scrolls out.
+    const anyStepInView = planInView || integrationsInView || sourcesInView;
+    const status = useConnectionStatus(anyStepInView);
     const mobileStatus = useConnectionStatus(mobilePlanInView);
 
     // Step 1 = connect (status + MotionLens popover) · Step 2 = ask (typing) · Step 3 = Blueprint result
@@ -40,7 +43,7 @@ export function ConnectSection() {
     const mobileShowTyping = mobileIntegrationsInView && !mobileSourcesInView;
 
     // Once connected, keep the "connected" badge through the ask + result steps.
-    const desktopStatus = planInView ? (status === "idle" ? "connecting" : status) : status;
+    const desktopStatus = anyStepInView ? (status === "idle" ? "connecting" : status) : status;
 
     return (
         <section id="connect" className="w-full relative">

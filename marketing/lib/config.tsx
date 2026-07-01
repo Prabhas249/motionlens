@@ -766,10 +766,10 @@ export const siteConfig = {
         title: "Give your AI agent eyes for motion",
         backgroundImage: "/agent-cta-background.png",
         button: {
-            text: "Start free trial",
+            text: "Start for free",
             href: LOGIN_URL,
         },
-        subtext: "Drop in any animation, get an agent-ready Blueprint. 3-day free trial — cancel anytime.",
+        subtext: "Drop in any animation, get an agent-ready Blueprint. Free to start — no card needed.",
     },
     footerLinks: [
         {
