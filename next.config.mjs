@@ -6,6 +6,7 @@ const nextConfig = {
   serverExternalPackages: ["ffmpeg-static"],
   outputFileTracingIncludes: {
     "/api/analyze": ["./node_modules/ffmpeg-static/**"],
+    "/api/debug-persist": ["./node_modules/ffmpeg-static/**"],
   },
 };
 export default nextConfig;
