@@ -6,12 +6,7 @@ import { Effect } from "postprocessing";
 import { forwardRef, useEffect, useRef } from "react";
 import * as THREE from "three";
 
-// CodeForge template default — bold monochrome B&W dither that flips with theme:
-// light mode = black waves on white, dark mode = white waves on near-black.
-const DEFAULT_WAVE_COLOR: [number, number, number] = [0.85, 0.85, 0.87]; // dark-mode wave (near-white)
-const DEFAULT_WAVE_LIGHT: [number, number, number] = [0.0, 0.0, 0.0]; // light-mode wave (pure black — denser black dots)
-const DEFAULT_BG_LIGHT: [number, number, number] = [0.85, 0.85, 0.87]; // light-mode base (darker → more black dots)
-const DEFAULT_BG_DARK: [number, number, number] = [0.04, 0.04, 0.05]; // dark-mode base (near-black)
+const DEFAULT_WAVE_COLOR: [number, number, number] = [1, 1, 1];
 
 const waveVertexShader = `
 precision highp float;
@@ -32,7 +27,6 @@ uniform float waveSpeed;
 uniform float waveFrequency;
 uniform float waveAmplitude;
 uniform vec3 waveColor;
-uniform vec3 bgColor;
 uniform vec2 mousePos;
 uniform int enableMouseInteraction;
 uniform float mouseRadius;
@@ -100,7 +94,7 @@ void main() {
     float effect = 1.0 - smoothstep(0.0, mouseRadius, dist);
     f -= 0.5 * effect;
   }
-  vec3 col = mix(bgColor, waveColor, f);
+  vec3 col = mix(vec3(0.0), waveColor, f);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -187,7 +181,6 @@ interface WaveUniforms {
   waveFrequency: THREE.Uniform<number>;
   waveAmplitude: THREE.Uniform<number>;
   waveColor: THREE.Uniform<THREE.Color>;
-  bgColor: THREE.Uniform<THREE.Color>;
   mousePos: THREE.Uniform<THREE.Vector2>;
   enableMouseInteraction: THREE.Uniform<number>;
   mouseRadius: THREE.Uniform<number>;
@@ -198,7 +191,6 @@ interface DitheredWavesProps {
   waveFrequency: number;
   waveAmplitude: number;
   waveColor: [number, number, number];
-  bgColor: [number, number, number];
   colorNum: number;
   pixelSize: number;
   disableAnimation: boolean;
@@ -211,7 +203,6 @@ function DitheredWaves({
   waveFrequency,
   waveAmplitude,
   waveColor,
-  bgColor,
   colorNum,
   pixelSize,
   disableAnimation,
@@ -222,7 +213,6 @@ function DitheredWaves({
   const mouseRef = useRef(new THREE.Vector2());
   const { viewport, size, gl, invalidate } = useThree();
   const [waveR, waveG, waveB] = waveColor;
-  const [bgR, bgG, bgB] = bgColor;
 
   const waveUniformsRef = useRef<WaveUniforms>({
     time: new THREE.Uniform(0),
@@ -231,7 +221,6 @@ function DitheredWaves({
     waveFrequency: new THREE.Uniform(waveFrequency),
     waveAmplitude: new THREE.Uniform(waveAmplitude),
     waveColor: new THREE.Uniform(new THREE.Color(waveR, waveG, waveB)),
-    bgColor: new THREE.Uniform(new THREE.Color(bgR, bgG, bgB)),
     mousePos: new THREE.Uniform(new THREE.Vector2(0, 0)),
     enableMouseInteraction: new THREE.Uniform(enableMouseInteraction ? 1 : 0),
     mouseRadius: new THREE.Uniform(mouseRadius),
@@ -266,7 +255,6 @@ function DitheredWaves({
   ]);
 
   const prevColor = useRef([...waveColor]);
-  const prevBg = useRef([...bgColor]);
   useFrame(({ clock }) => {
     const u = waveUniformsRef.current;
 
@@ -283,11 +271,6 @@ function DitheredWaves({
     if (!prevColor.current.every((v, i) => v === waveColor[i])) {
       u.waveColor.value.set(...waveColor);
       prevColor.current = [...waveColor];
-    }
-
-    if (!prevBg.current.every((v, i) => v === bgColor[i])) {
-      u.bgColor.value.set(...bgColor);
-      prevBg.current = [...bgColor];
     }
 
     u.enableMouseInteraction.value = enableMouseInteraction ? 1 : 0;
@@ -343,8 +326,6 @@ export interface DitherProps {
   waveAmplitude?: number;
   waveColor?: [number, number, number];
   waveColorDark?: [number, number, number];
-  bgColor?: [number, number, number];
-  bgColorDark?: [number, number, number];
   colorNum?: number;
   pixelSize?: number;
   disableAnimation?: boolean;
@@ -356,10 +337,8 @@ export function Dither({
   waveSpeed = 0.01,
   waveFrequency = 0,
   waveAmplitude = 0.18,
-  waveColor = DEFAULT_WAVE_LIGHT,
+  waveColor = DEFAULT_WAVE_COLOR,
   waveColorDark = DEFAULT_WAVE_COLOR,
-  bgColor = DEFAULT_BG_LIGHT,
-  bgColorDark = DEFAULT_BG_DARK,
   colorNum = 2.5,
   pixelSize = 2,
   disableAnimation = false,
@@ -367,9 +346,7 @@ export function Dither({
   mouseRadius = 1,
 }: DitherProps) {
   const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const activeColor = isDark ? waveColorDark : waveColor;
-  const activeBg = isDark ? bgColorDark : bgColor;
+  const activeColor = resolvedTheme === "dark" ? waveColorDark : waveColor;
 
   return (
     <Canvas
@@ -390,7 +367,6 @@ export function Dither({
         waveFrequency={waveFrequency}
         waveAmplitude={waveAmplitude}
         waveColor={activeColor}
-        bgColor={activeBg}
         colorNum={colorNum}
         pixelSize={pixelSize}
         disableAnimation={disableAnimation}
