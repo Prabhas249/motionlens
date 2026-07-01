@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
+import { r2GetBytes, r2Put, r2Delete } from "@/lib/r2";
 import sharp from "sharp";
 import { writeFile, readFile, unlink, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -1050,7 +1051,8 @@ async function buildStoryboard(
 // ---------- handler ----------
 export async function POST(req: Request) {
   let tmpPath: string | null = null;
-  let clipPath: string | null = null; // the Storage object to clean up (any exit path)
+  let rawKey: string | null = null; // raw R2 upload to clean up on any exit path
+  let analysisId: string | null = null; // set once the analysis row is saved
   // Credit bookkeeping — so we can refund the run if the engine errors after charging.
   let supa: Awaited<ReturnType<typeof createClient>> | null = null;
   let charged = false;
@@ -1065,11 +1067,11 @@ export async function POST(req: Request) {
     const form = await req.formData();
     // The client uploads the clip to Storage and sends only its path here — this
     // keeps the request body tiny (Vercel caps function bodies at 4.5MB).
-    const videoPath = form.get("videoPath");
-    if (typeof videoPath !== "string" || !videoPath) {
+    const clipKey = form.get("clipKey");
+    if (typeof clipKey !== "string" || !clipKey) {
       return Response.json({ error: "No video uploaded." }, { status: 400 });
     }
-    clipPath = videoPath;
+    rawKey = clipKey;
 
     // Mode decides how many credits the run spends: Standard 1, Annotated 2, Precision 3.
     const modeRaw = form.get("mode");
@@ -1120,28 +1122,24 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       ? `\n\nFINAL-FRAME SCREENSHOT PROVIDED — a sharp, full-resolution still of the FINAL settled state is attached alongside the video. The VIDEO is the source of truth for MOTION (what moves, the order, timing, easing). The SCREENSHOT is the source of truth for the EXACT static appearance of the end state: real colors (read the true hex), exact element sizes/proportions (px), fonts, corner radii, spacing, and final layout. When the (compressed, sometimes blurry) video and the screenshot disagree on APPEARANCE, TRUST THE SCREENSHOT. Bake its exact values into "elements", "spatial", the motion from->to endpoints, and especially "agent_prompt" so a developer can recreate it pixel-for-pixel.`
       : "";
 
-    // Pull the clip from Storage (RLS lets the user read only their own path).
-    const dl = await supa.storage.from("clips").download(videoPath);
-    if (dl.error || !dl.data) {
+    // Pull the raw clip from R2 (free egress, no size cap).
+    const bytes = await r2GetBytes(clipKey);
+    if (!bytes) {
       if (charged && supa) {
         try { await supa.rpc("refund_credit", { p_amount: creditCost }); } catch { /* ignore */ }
       }
       return Response.json({ error: "Couldn't read the uploaded clip — please try again." }, { status: 400 });
     }
-    const bytes = Buffer.from(await dl.data.arrayBuffer());
-    const ext = (videoPath.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "mp4").toLowerCase();
+    const ext = (clipKey.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "mp4").toLowerCase();
     const safeName = `clip-${Date.now()}.${ext}`;
     tmpPath = join(tmpdir(), safeName);
     await writeFile(tmpPath, bytes);
-    // On disk now — free the storage object (best effort).
-    supa.storage.from("clips").remove([videoPath]).then(() => {}, () => {});
 
     // Measure the motion-energy timeline locally while Gemini uploads/processes the video (parallel, free).
     const energyP = motionEnergy(tmpPath);
 
     const EXT_MIME: Record<string, string> = { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", m4v: "video/x-m4v" };
-    const videoMime =
-      dl.data.type && dl.data.type.startsWith("video/") ? dl.data.type : (EXT_MIME[ext] || "video/mp4");
+    const videoMime = EXT_MIME[ext] || "video/mp4";
     let uploaded = await ai.files.upload({ file: tmpPath, config: { mimeType: videoMime, displayName: safeName } });
     while (uploaded.state === "PROCESSING") {
       await new Promise((r) => setTimeout(r, 1500));
@@ -1336,18 +1334,19 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       return buildStoryboard(tmp, { timeline: blueprint.timeline });
     };
 
-    // Save to the user's history (best effort — never block the result on it).
+    // Save to history (best effort). Keep the id so we can attach the compressed
+    // clip after streaming (see the stream's finally below).
     try {
       const title =
         typeof blueprint?.summary === "string" && blueprint.summary.trim()
           ? blueprint.summary.trim().slice(0, 90)
           : "Untitled analysis";
-      await supa.from("analyses").insert({
-        user_id: user.id,
-        title,
-        mode,
-        blueprint,
-      });
+      const { data: row } = await supa
+        .from("analyses")
+        .insert({ user_id: user.id, title, mode, blueprint })
+        .select("id")
+        .single();
+      analysisId = (row?.id as string) ?? null;
     } catch {
       /* ignore history write failures */
     }
@@ -1363,7 +1362,28 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
         } catch {
           controller.enqueue(enc.encode(JSON.stringify({ type: "frames", frames: [] }) + "\n"));
         } finally {
-          controller.close();
+          controller.close(); // client has the full result now
+          // Keep a compressed 720p copy of the clip in R2 for replay (best effort).
+          if (analysisId && tmp && supa) {
+            const outPath = join(tmpdir(), `keep-${analysisId}.mp4`);
+            try {
+              await pexecFile("ffmpeg", [
+                "-y", "-i", tmp,
+                "-vf", "scale=-2:'min(720,ih)'",
+                "-c:v", "libx264", "-crf", "30", "-preset", "veryfast",
+                "-movflags", "+faststart", "-an", outPath,
+              ]);
+              const small = await readFile(outPath);
+              const finalKey = `${user.id}/clips/${analysisId}.mp4`;
+              if (await r2Put(finalKey, small, "video/mp4")) {
+                await supa.from("analyses").update({ clip_key: finalKey }).eq("id", analysisId);
+              }
+            } catch {
+              /* keep the analysis even if the clip copy fails */
+            } finally {
+              await unlink(outPath).catch(() => {});
+            }
+          }
           if (tmp) await unlink(tmp).catch(() => {});
         }
       },
@@ -1382,9 +1402,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     return Response.json({ error: `MotionLens engine error: ${clean}` }, { status: 500 });
   } finally {
     if (tmpPath) await unlink(tmpPath).catch(() => {});
-    // Remove the uploaded clip on every exit path (incl. out-of-credits / errors).
-    if (supa && clipPath) {
-      try { await supa.storage.from("clips").remove([clipPath]); } catch { /* ignore */ }
-    }
+    // Remove the RAW R2 upload on every exit path (we keep only the compressed copy).
+    if (rawKey) await r2Delete(rawKey);
   }
 }

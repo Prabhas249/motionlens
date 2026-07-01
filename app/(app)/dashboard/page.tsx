@@ -11,7 +11,27 @@ import {
   type Mode,
 } from "@/components/blueprint-view"
 import { CopilotChat } from "@/components/copilot-chat"
-import { createClient } from "@/lib/supabase/client"
+
+// PUT a file to a presigned URL, reporting upload progress.
+function putWithProgress(
+  url: string,
+  file: File,
+  onProgress: (p: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("PUT", url)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+    }
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(new Error(`upload ${xhr.status}`))
+    xhr.onerror = () => reject(new Error("network"))
+    xhr.send(file)
+  })
+}
 
 export default function Page() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
@@ -21,6 +41,7 @@ export default function Page() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState("")
   const [storyboardLoading, setStoryboardLoading] = useState(false)
+  const [clipUrl, setClipUrl] = useState<string | null>(null)
 
   // Reopen a saved analysis from the sidebar history (/dashboard?a=<id>).
   useEffect(() => {
@@ -35,6 +56,7 @@ export default function Page() {
           setBlueprint(data.blueprint as Blueprint)
           if (data.mode) setMode(data.mode as Mode)
           setFrames([])
+          setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
           setPhase("idle")
         }
       } catch {
@@ -53,52 +75,42 @@ export default function Page() {
     }
     setBlueprint(null)
     setFrames([])
+    setClipUrl(null)
     setProgress(0)
     setError("")
     setStoryboardLoading(false)
     setPhase("uploading")
 
-    // Upload the clip straight to Storage — Vercel caps the /api body at 4.5MB,
-    // so we never send the video through the function; we pass its path instead.
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setError("Please sign in to run an analysis.")
-      setPhase("error")
-      return
-    }
-    const clean = file.name.replace(/[^\w.-]/g, "_")
-    const videoPath = `${user.id}/${Date.now()}-${clean}`
-    const up = await supabase.storage
-      .from("clips")
-      .upload(videoPath, file, { contentType: file.type || "video/quicktime", upsert: false })
-    if (up.error) {
+    // 1) Presigned upload straight to R2 — no size limit, real upload progress.
+    let clipKey: string
+    try {
+      const r = await fetch("/api/clip-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name }),
+      })
+      const d = await r.json()
+      if (!r.ok || !d.url || !d.key) throw new Error(d.error || "no url")
+      clipKey = d.key
+      await putWithProgress(d.url, file, setProgress)
+    } catch {
       setError("Upload failed — please try again.")
       setPhase("error")
       return
     }
     setPhase("analyzing")
 
+    // 2) Analyze by key — tiny body, streams the NDJSON result back.
     const form = new FormData()
-    form.set("videoPath", videoPath)
+    form.set("clipKey", clipKey)
     form.set("mode", mode)
     if (context.trim()) form.set("context", context.trim())
     if (screenshot) form.set("screenshot", screenshot)
 
     const xhr = new XMLHttpRequest()
     xhr.open("POST", "/api/analyze")
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) {
-        const p = Math.round((ev.loaded / ev.total) * 100)
-        setProgress(p)
-        if (p >= 100) setPhase("analyzing")
-      }
-    }
-    // Read the NDJSON stream incrementally: {type:"blueprint"} arrives first → show it + auto-gen code;
-    // {type:"frames"} arrives after → fill in the storyboard. (XHR gives us both upload progress AND
-    // streamed response text via onprogress.)
+    // Read the NDJSON stream incrementally: {type:"blueprint"} arrives first → show it;
+    // {type:"frames"} arrives after → fill in the storyboard.
     let handled = 0
     let gotBlueprint = false
     const pump = () => {
@@ -115,7 +127,7 @@ export default function Page() {
             setFrames([])
             setStoryboardLoading(true)
             setPhase("idle")
-            // credits were just spent — refresh the credits badge
+            // credits were just spent — refresh the credits badge + history
             window.dispatchEvent(new Event("credits-updated"))
           } else if (msg.type === "frames") {
             setFrames(Array.isArray(msg.frames) ? msg.frames : [])
@@ -145,7 +157,7 @@ export default function Page() {
       }
     }
     xhr.onerror = () => {
-      setError("Upload failed — is the dev server running?")
+      setError("Analysis failed — please try again.")
       setStoryboardLoading(false)
       setPhase("error")
     }
@@ -155,6 +167,7 @@ export default function Page() {
   function reset() {
     setBlueprint(null)
     setFrames([])
+    setClipUrl(null)
     setError("")
     setStoryboardLoading(false)
     setPhase("idle")
@@ -187,8 +200,23 @@ export default function Page() {
           />
         </main>
 
-        {/* RIGHT — analysis input + copilot */}
+        {/* RIGHT — replay (if any) + analysis input + copilot */}
         <aside className="flex w-[360px] shrink-0 flex-col gap-4 min-h-0">
+          {clipUrl && (
+            <div className="shrink-0 overflow-hidden rounded-xl border bg-card">
+              <div className="flex h-9 items-center justify-between border-b px-3">
+                <span className="font-mono text-[10px] uppercase text-muted-foreground">
+                  Original clip
+                </span>
+              </div>
+              <video
+                src={clipUrl}
+                controls
+                playsInline
+                className="max-h-56 w-full bg-black object-contain"
+              />
+            </div>
+          )}
           <AnalysisInput
             mode={mode}
             setMode={setMode}

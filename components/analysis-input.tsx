@@ -64,7 +64,7 @@ export function AnalysisInput({
       <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 text-center">
         <WaveSpinner size="md" />
         <p className="text-sm font-medium">
-          {phase === "uploading" ? "Uploading clip…" : "Analyzing…"}
+          {phase === "uploading" ? `Uploading… ${progress}%` : "Analyzing…"}
         </p>
       </div>
     );
