@@ -65,12 +65,23 @@ export async function POST(req: Request) {
     const id = await targetId();
     if (id && mapping) {
       // Never null-overwrite the Dodo ids on a renewal that omits them.
-      const update: Record<string, unknown> = {
-        plan: mapping.plan,
-        credits: mapping.credits, // reset to the monthly grant each cycle
-      };
+      const update: Record<string, unknown> = { plan: mapping.plan };
       if (customer.customer_id) update.dodo_customer_id = customer.customer_id;
       if (data.subscription_id) update.dodo_subscription_id = data.subscription_id;
+      // Only (re)grant the full monthly credits on a genuine renewal, or when a
+      // brand-new subscriber first activates. A plan CHANGE also fires "active",
+      // but the checkout route already set the prorated delta — clobbering it with
+      // the full grant would refill the allotment on every switch (farmable). So on
+      // "active" we grant only if the user wasn't already on a paid plan.
+      const { data: cur } = await sb
+        .from("profiles")
+        .select("plan")
+        .eq("id", id)
+        .single();
+      const wasPaid = cur?.plan === "pro" || cur?.plan === "studio";
+      if (type === "subscription.renewed" || !wasPaid) {
+        update.credits = mapping.credits;
+      }
       await sb.from("profiles").update(update).eq("id", id);
     }
   } else if (type === "subscription.expired") {
