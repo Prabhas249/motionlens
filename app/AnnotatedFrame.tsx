@@ -30,6 +30,8 @@ type Props = {
   // Enlarge request — receives the current canvas as a PNG data URL so the
   // zoomed view keeps the drawn callouts (incl. any manual nudges).
   onExpand?: (dataUrl: string) => void;
+  // false = render the clean frame (no callouts drawn, no callout dragging).
+  showCallouts?: boolean;
 };
 
 const FINAL_GREEN = "#27C26B";
@@ -202,7 +204,7 @@ const DIRS: Record<string, number[]> = { up: [0, -1], down: [0, 1], left: [-1, 0
 
 // N hand-drawn callouts ON the frame, each draggable, all baked into one PNG. Tiny tight circle on WHAT
 // moves, an expressive glyph for HOW it moves, and a marker-font caption (the MOTION) in the margin.
-export default function AnnotatedFrame({ src, annotations, index, isLast, onCorrection, onExpand }: Props) {
+export default function AnnotatedFrame({ src, annotations, index, isLast, onCorrection, onExpand, showCallouts = true }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const annsRef = useRef<Ann[]>(annotations || []);
@@ -273,6 +275,7 @@ export default function AnnotatedFrame({ src, annotations, index, isLast, onCorr
     ctx.fillStyle = bgRef.current.hex || "#0E0E10";
     ctx.fillRect(0, 0, cw, ch);
     ctx.drawImage(img, fx, fy, fw, fh);
+    if (!showCallouts) return; // clean frame — no annotations drawn
 
     const rc = rough.canvas(canvas);
     const anns = annsRef.current;
@@ -444,7 +447,7 @@ export default function AnnotatedFrame({ src, annotations, index, isLast, onCorr
         ctx.fillText(ln, c.x, ty);
       });
     });
-  }, [dims, index, fontReady]);
+  }, [dims, index, fontReady, showCallouts]);
 
   useEffect(() => {
     draw();
@@ -457,6 +460,11 @@ export default function AnnotatedFrame({ src, annotations, index, isLast, onCorr
   };
   const onDown = (e: ReactPointerEvent) => {
     if (!dims) return;
+    if (!showCallouts) {
+      // clean view — nothing draggable, any click is an enlarge candidate
+      clickRef.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
     const pt = toCanvas(e);
     let best = -1;
     let bestD = Infinity;
@@ -544,14 +552,20 @@ export default function AnnotatedFrame({ src, annotations, index, isLast, onCorr
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
-        style={{ width: "100%", borderRadius: 8, border: "1px solid #222", display: "block", touchAction: "none", cursor: "grab" }}
+        style={{ width: "100%", borderRadius: 8, border: "1px solid #222", display: "block", touchAction: "none", cursor: showCallouts ? "grab" : "zoom-in" }}
       />
       <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center" }}>
         <button type="button" onClick={expand} style={miniBtn}>⤢ View</button>
         <button type="button" onClick={download} style={miniBtn}>⬇︎ Save</button>
         <button type="button" onClick={copy} style={miniBtn}>⧉ Copy</button>
         <span style={{ fontSize: 11, opacity: 0.45 }}>
-          {nudged ? "nudged ✓" : count > 1 ? `${count} callouts · drag to fix` : "drag to fix"}
+          {!showCallouts
+            ? "clean view"
+            : nudged
+              ? "nudged ✓"
+              : count > 1
+                ? `${count} callouts · drag to fix`
+                : "drag to fix"}
         </span>
       </div>
     </div>

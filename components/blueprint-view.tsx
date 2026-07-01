@@ -69,6 +69,9 @@ export function BlueprintView({
   // Enlarged storyboard frame (click a frame / ⤢ on an annotated one). For
   // annotated frames the src is the CANVAS export, so callouts + nudges show.
   const [lightbox, setLightbox] = React.useState<{ src: string; caption?: string } | null>(null);
+  // Storyboard callouts on/off — off shows the clean frames (placement misses
+  // become dismissible instead of trust-killers).
+  const [callouts, setCallouts] = React.useState(true);
   const [framework, setFramework] = React.useState("Framer Motion");
   const [code, setCode] = React.useState("");
   const [genning, setGenning] = React.useState(false);
@@ -252,6 +255,23 @@ export function BlueprintView({
 
           {frames.length > 0 && (
             <Section title="Storyboard">
+              {(mode === "annotated" || mode === "precision") && (
+                <div className="mb-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCallouts((v) => !v)}
+                    aria-pressed={callouts}
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-[11px] transition-colors",
+                      callouts
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    Callouts {callouts ? "on" : "off"}
+                  </button>
+                </div>
+              )}
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {frames.map((f, i) =>
                   mode === "annotated" || mode === "precision" ? (
@@ -262,6 +282,7 @@ export function BlueprintView({
                         index={i}
                         isLast={i === frames.length - 1}
                         onCorrection={onCorrection}
+                        showCallouts={callouts}
                         onExpand={(src) =>
                           setLightbox({ src, caption: f.annotations?.[0]?.label || f.label })
                         }
