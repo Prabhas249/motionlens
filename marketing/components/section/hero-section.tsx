@@ -7,17 +7,19 @@ import { HeaderBadge } from "@marketing/components/header-badge";
 import PremiumButton from "@marketing/components/premium-button";
 import { DiaTextReveal } from "@marketing/components/ui/dia-text";
 import { MotionLensLogo } from "@marketing/components/motionlens-logo";
+import { PixelGridShader } from "@marketing/components/ui/pixelgrid-shader";
 
+// The Blueprint on the right describes the clip on the left (the map pull-back).
 const BLUEPRINT = {
     summary:
-        "A confirmation screen slides in, then its checklist items stagger up into place.",
-    trigger: "tap",
+        "The map pulls back to reveal friends popping in across the city.",
+    trigger: "load",
     motion: [
-        { el: "Screen", cls: "slide", val: "x 100% → 0", meta: "~350ms · ease-out" },
-        { el: "Checklist", cls: "slide + fade", val: "+12px · 0 → 1", meta: "~300ms · 60ms stagger" },
-        { el: "Primary CTA", cls: "fade", val: "opacity 0 → 1", meta: "~250ms" },
+        { el: "Map camera", cls: "scale", val: "zoomed-in → pulled back", meta: "~600ms · ease-out" },
+        { el: "Friend pins", cls: "scale + fade", val: "0 → 1 · pop", meta: "~300ms · 50ms stagger" },
+        { el: "3D marker", cls: "rotate", val: "continuous spin", meta: "loop · linear" },
     ],
-    feel: ["crisp", "deliberate", "native"],
+    feel: ["spatial", "alive", "playful"],
 };
 
 const CARD_SHADOW =
@@ -49,11 +51,10 @@ function ClipCard() {
             </div>
             <div className="relative aspect-square w-full overflow-hidden bg-[#FDFDFD]">
                 {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                {/* 2×2 grid of real UI animations — source watermarks painted out in ffmpeg */}
                 <video
                     className="h-full w-full object-cover"
-                    src="/examples/hero-montage.mp4"
-                    poster="/examples/hero-montage.jpg"
+                    src="/examples/hero-map.mp4"
+                    poster="/examples/hero-map.jpg"
                     autoPlay
                     muted
                     loop
@@ -74,7 +75,6 @@ function BlueprintCard() {
             viewport={{ once: true, amount: 0.3 }}
             className={`relative overflow-hidden rounded-2xl border border-border/70 bg-card/70 p-5 ring-1 ring-black/[0.03] backdrop-blur-md ${CARD_SHADOW}`}
         >
-            {/* faint cobalt top glow for depth */}
             <div className="pointer-events-none absolute inset-x-0 -top-16 h-32 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(42,72,240,0.10),transparent_70%)]" />
 
             <motion.div variants={row} className="relative flex items-center gap-2.5">
@@ -145,16 +145,35 @@ export function HeroSection() {
     return (
         <section
             id="hero"
-            className="relative flex min-h-svh w-full flex-col items-center justify-center overflow-hidden px-4 py-20 md:py-28"
+            className="relative flex w-full flex-col items-center px-4"
         >
-            {/* headline block */}
-            <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center justify-center space-y-6 text-center">
+            {/* first fold: text on a full-bleed pixel-grid shader (brand cobalt) */}
+            <div className="relative flex min-h-svh w-full flex-col items-center justify-center py-24">
+                {/* pixel-grid shader — a subtle, steady field across the whole hero (faded only
+                    at top/bottom). ONLY the area under the cursor burns dense/bright. z-0 so the
+                    canvas gets the cursor; text/button stay above at z-10. */}
+                <div className="absolute left-1/2 top-0 z-0 h-full w-screen -translate-x-1/2 opacity-[0.4] [mask-image:linear-gradient(to_bottom,transparent,#000_12%,#000_88%,transparent)]">
+                    <PixelGridShader
+                        shape="plasma"
+                        colorFg="#3D5CFF"
+                        pxSize={5}
+                        amplitude={0.2}
+                        frequency={0.7}
+                        speed={0.6}
+                        matrix="bayer8"
+                        cursorMode="burn"
+                        cursorSize={0.4}
+                        cursorScale={0.3}
+                    />
+                </div>
+
+                <div className="relative z-10 flex w-full max-w-3xl flex-col items-center space-y-6 text-center">
                 <HeaderBadge
                     icon={hero.badgeIcon}
                     text={hero.badge}
                     className="max-[350px]:hidden"
                 />
-                <h1 className="text-balance text-center text-4xl font-semibold tracking-tighter text-foreground md:text-5xl lg:text-6xl">
+                <h1 className="text-balance text-center text-5xl font-semibold tracking-tighter text-foreground md:text-6xl lg:text-7xl">
                     Finally, AI agents understand{" "}
                     <DiaTextReveal
                         text={["motion", "animations", "interactions", "transitions"]}
@@ -175,10 +194,11 @@ export function HeroSection() {
                         window.location.href = hero.cta.primary.href;
                     }}
                 />
+                </div>
             </div>
 
-            {/* before → after split */}
-            <div className="relative z-10 mt-16 w-full max-w-5xl">
+            {/* clip → Blueprint — below the fold */}
+            <div className="relative z-10 mx-auto w-full max-w-5xl pb-20 md:pb-28">
                 <div className="mb-4 flex items-center justify-between px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     <span>Any UI animation</span>
                     <span>Agent-ready Blueprint</span>
@@ -186,12 +206,9 @@ export function HeroSection() {
                 <div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
                     <ClipCard />
 
-                    {/* connector */}
+                    {/* connector — arrow only, no logo */}
                     <div className="flex items-center justify-center">
-                        <div className={`flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5 ring-1 ring-black/[0.03] ${CARD_SHADOW}`}>
-                            <span className="flex size-5 items-center justify-center rounded bg-[#2A48F0] text-white">
-                                <MotionLensLogo className="size-3" animated={false} />
-                            </span>
+                        <div className={`flex size-9 items-center justify-center rounded-full border border-border/70 bg-card ring-1 ring-black/[0.03] ${CARD_SHADOW}`}>
                             <ArrowRight className="hidden size-4 text-[#2A48F0] md:block" />
                             <ArrowDown className="size-4 text-[#2A48F0] md:hidden" />
                         </div>
