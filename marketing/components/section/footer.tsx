@@ -3,10 +3,18 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { siteConfig } from "@marketing/lib/config";
-import { Icons } from "@marketing/components/icons";
 import { MotionLensLogo } from "@marketing/components/motionlens-logo";
 import { FlickeringGridText } from "@marketing/components/ui/flickering-grid-text";
 import { useMobile } from "@marketing/hooks/use-mobile";
+
+// Footer links intentionally hidden (kept out of the footer regardless of config).
+const HIDE_LINKS = new Set([
+    "Multi-Agent Workflows",
+    "Our team",
+    "Careers",
+    "Brand",
+    "Legal",
+]);
 
 export function Footer() {
     const { footerLinks, hero } = siteConfig;
@@ -27,37 +35,33 @@ export function Footer() {
                     <p className="font-medium tracking-tight text-muted-foreground">
                         {hero.description}
                     </p>
-                    <div className="flex items-center gap-2 dark:hidden">
-                        <Icons.soc2 className="size-12" />
-                        <Icons.hipaa className="size-12" />
-                        <Icons.gdpr className="size-12" />
-                    </div>
-                    <div className="hidden items-center gap-2 dark:flex">
-                        <Icons.soc2Dark className="size-12" />
-                        <Icons.hipaaDark className="size-12" />
-                        <Icons.gdprDark className="size-12" />
-                    </div>
                 </div>
                 <div className="pt-5 md:w-1/2">
                     <div className="flex flex-col items-start justify-start gap-y-5 md:flex-row md:items-start md:justify-between lg:pl-10">
-                        {footerLinks.map((column) => (
-                            <ul key={column.title} className="flex flex-col gap-y-2">
-                                <li className="mb-2 text-sm font-semibold text-foreground">
-                                    {column.title}
-                                </li>
-                                {column.links.map((link) => (
-                                    <li
-                                        key={link.id}
-                                        className="group inline-flex cursor-pointer items-center justify-start gap-1 text-[15px]/snug text-muted-foreground"
-                                    >
-                                        <Link href={link.url}>{link.title}</Link>
-                                        <div className="flex size-4 translate-x-0 transform items-center justify-center rounded border border-border opacity-0 transition-all duration-300 ease-out group-hover:translate-x-1 group-hover:opacity-100">
-                                            <ChevronRight className="h-3.5 w-3.5" />
-                                        </div>
+                        {footerLinks.map((column) => {
+                            const links = column.links.filter(
+                                (link) => !HIDE_LINKS.has(link.title),
+                            );
+                            if (!links.length) return null;
+                            return (
+                                <ul key={column.title} className="flex flex-col gap-y-2">
+                                    <li className="mb-2 text-sm font-semibold text-foreground">
+                                        {column.title}
                                     </li>
-                                ))}
-                            </ul>
-                        ))}
+                                    {links.map((link) => (
+                                        <li
+                                            key={link.id}
+                                            className="group inline-flex cursor-pointer items-center justify-start gap-1 text-[15px]/snug text-muted-foreground"
+                                        >
+                                            <Link href={link.url}>{link.title}</Link>
+                                            <div className="flex size-4 translate-x-0 transform items-center justify-center rounded border border-border opacity-0 transition-all duration-300 ease-out group-hover:translate-x-1 group-hover:opacity-100">
+                                                <ChevronRight className="h-3.5 w-3.5" />
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
