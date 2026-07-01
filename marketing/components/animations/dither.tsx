@@ -6,12 +6,12 @@ import { Effect } from "postprocessing";
 import { forwardRef, useEffect, useRef } from "react";
 import * as THREE from "three";
 
-// Subtle neutral dark texture (template default look) — a refined near-black dither
-// band in both modes, not a loud cobalt bar. Wave = faint gray over a near-black base.
-const DEFAULT_WAVE_COLOR: [number, number, number] = [0.22, 0.22, 0.25];
-const DEFAULT_WAVE_LIGHT: [number, number, number] = [0.22, 0.22, 0.25];
-const DEFAULT_BG_LIGHT: [number, number, number] = [0.035, 0.035, 0.045];
-const DEFAULT_BG_DARK: [number, number, number] = [0.035, 0.035, 0.045];
+// CodeForge template default — bold monochrome B&W dither that flips with theme:
+// light mode = black waves on white, dark mode = white waves on near-black.
+const DEFAULT_WAVE_COLOR: [number, number, number] = [0.85, 0.85, 0.87]; // dark-mode wave (near-white)
+const DEFAULT_WAVE_LIGHT: [number, number, number] = [0.08, 0.08, 0.09]; // light-mode wave (near-black)
+const DEFAULT_BG_LIGHT: [number, number, number] = [0.96, 0.96, 0.97]; // light-mode base (near-white)
+const DEFAULT_BG_DARK: [number, number, number] = [0.04, 0.04, 0.05]; // dark-mode base (near-black)
 
 const waveVertexShader = `
 precision highp float;
