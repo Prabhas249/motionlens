@@ -39,7 +39,7 @@ export function AccountForm({
       const r = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: value.trim() || null }),
+        body: JSON.stringify({ displayName: value.trim() }),
       });
       if (!r.ok) throw new Error();
       setStatus("saved");

@@ -64,34 +64,29 @@ export async function POST(req: Request) {
     const mapping = planForProduct(data.product_id as string | undefined);
     const id = await targetId();
     if (id && mapping) {
-      await sb
-        .from("profiles")
-        .update({
-          plan: mapping.plan,
-          credits: mapping.credits, // reset to the monthly grant
-          dodo_customer_id: (customer.customer_id as string) ?? null,
-          dodo_subscription_id: (data.subscription_id as string) ?? null,
-        })
-        .eq("id", id);
+      // Never null-overwrite the Dodo ids on a renewal that omits them.
+      const update: Record<string, unknown> = {
+        plan: mapping.plan,
+        credits: mapping.credits, // reset to the monthly grant each cycle
+      };
+      if (customer.customer_id) update.dodo_customer_id = customer.customer_id;
+      if (data.subscription_id) update.dodo_subscription_id = data.subscription_id;
+      await sb.from("profiles").update(update).eq("id", id);
     }
-  } else if (
-    type === "subscription.cancelled" ||
-    type === "subscription.expired" ||
-    type === "subscription.on_hold" ||
-    type === "subscription.failed"
-  ) {
-    // Only downgrade when the subscription is actually over. A cancel that's
-    // scheduled for period end keeps status "active" → the user keeps access.
-    const status = String(data.status || "").toLowerCase();
-    const terminal =
-      status === "expired" || status === "cancelled" || status === "failed";
-    if (terminal) {
+  } else if (type === "subscription.expired") {
+    // Period actually ended → free.
+    const id = await targetId();
+    if (id) await sb.from("profiles").update({ plan: "free" }).eq("id", id);
+  } else if (type === "subscription.cancelled") {
+    // A cancel scheduled for period end keeps status "active" → keep access.
+    // Any other status (or an immediate cancel) is terminal → free.
+    if (String(data.status || "").toLowerCase() !== "active") {
       const id = await targetId();
-      if (id) {
-        await sb.from("profiles").update({ plan: "free" }).eq("id", id);
-      }
+      if (id) await sb.from("profiles").update({ plan: "free" }).eq("id", id);
     }
   }
+  // subscription.on_hold / .failed → keep access during Dodo's dunning retries;
+  // an "expired" fires if it ultimately ends.
 
   return Response.json({ received: true });
 }

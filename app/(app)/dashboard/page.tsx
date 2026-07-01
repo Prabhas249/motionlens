@@ -157,8 +157,10 @@ export default function Page() {
       }
     }
     xhr.onerror = () => {
-      setError("Analysis failed — please try again.")
       setStoryboardLoading(false)
+      // If the blueprint already arrived, keep it — only the storyboard was interrupted.
+      if (gotBlueprint) return
+      setError("Analysis failed — please try again.")
       setPhase("error")
     }
     xhr.send(form)

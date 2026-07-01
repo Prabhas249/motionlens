@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { dodoFetch } from "@/lib/dodo";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,24 @@ export async function DELETE() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+
+  // Cancel any Dodo subscription first, so billing stops (Dodo is the merchant of
+  // record — otherwise it keeps charging a card with no account behind it).
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("dodo_subscription_id")
+    .eq("id", user.id)
+    .single();
+  if (prof?.dodo_subscription_id) {
+    try {
+      await dodoFetch(`/subscriptions/${prof.dodo_subscription_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+    } catch {
+      /* best effort — don't block account deletion on it */
+    }
+  }
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

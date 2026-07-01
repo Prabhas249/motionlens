@@ -1071,7 +1071,6 @@ export async function POST(req: Request) {
     if (typeof clipKey !== "string" || !clipKey) {
       return Response.json({ error: "No video uploaded." }, { status: 400 });
     }
-    rawKey = clipKey;
 
     // Mode decides how many credits the run spends: Standard 1, Annotated 2, Precision 3.
     const modeRaw = form.get("mode");
@@ -1086,6 +1085,12 @@ export async function POST(req: Request) {
     if (!user) {
       return Response.json({ error: "Please sign in to run an analysis." }, { status: 401 });
     }
+    // Ownership: a client may only analyze clips it uploaded. Set rawKey (the
+    // object we clean up) only AFTER this check so we never delete someone else's.
+    if (!clipKey.startsWith(`${user.id}/`)) {
+      return Response.json({ error: "Invalid clip." }, { status: 403 });
+    }
+    rawKey = clipKey;
     const { data: remaining, error: creditErr } = await supa.rpc("consume_credit", { p_amount: creditCost });
     if (creditErr) {
       return Response.json({ error: "Couldn't check your credits — please try again." }, { status: 500 });
@@ -1145,7 +1150,10 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       await new Promise((r) => setTimeout(r, 1500));
       uploaded = await ai.files.get({ name: uploaded.name! });
     }
-    if (uploaded.state === "FAILED") return Response.json({ error: "MotionLens couldn't process this video — try a shorter clip or Standard mode." }, { status: 500 });
+    if (uploaded.state === "FAILED") {
+      if (charged && supa) { try { await supa.rpc("refund_credit", { p_amount: creditCost }); } catch { /* ignore */ } }
+      return Response.json({ error: "MotionLens couldn't process this video — try a shorter clip or Standard mode." }, { status: 500 });
+    }
 
     const uri = uploaded.uri!;
     const mime = uploaded.mimeType!;
@@ -1362,8 +1370,8 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
         } catch {
           controller.enqueue(enc.encode(JSON.stringify({ type: "frames", frames: [] }) + "\n"));
         } finally {
-          controller.close(); // client has the full result now
-          // Keep a compressed 720p copy of the clip in R2 for replay (best effort).
+          // Keep a compressed 720p copy in R2 for replay — do it BEFORE closing so
+          // the function stays alive (Vercel can freeze once the response is done).
           if (analysisId && tmp && supa) {
             const outPath = join(tmpdir(), `keep-${analysisId}.mp4`);
             try {
@@ -1384,6 +1392,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
               await unlink(outPath).catch(() => {});
             }
           }
+          controller.close();
           if (tmp) await unlink(tmp).catch(() => {});
         }
       },

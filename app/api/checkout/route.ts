@@ -28,10 +28,11 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: prof } = await supabase
     .from("profiles")
-    .select("plan, dodo_subscription_id")
+    .select("plan, credits, dodo_subscription_id")
     .eq("id", profile.userId)
     .single();
   const currentPlan = (prof?.plan as string) ?? "free";
+  const currentCredits = (prof?.credits as number) ?? 0;
   const subId = prof?.dodo_subscription_id as string | null;
 
   if (currentPlan === plan) {
@@ -57,9 +58,17 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
+    // Anti-farming: never reset to the full grant on a switch (a user could bounce
+    // Pro↔Studio to refill credits for near-zero prorated cost). On an upgrade add
+    // only the delta (capped at the new grant); on a downgrade cap at the new grant.
+    const currentGrant = PLANS[currentPlan as PaidPlan]?.credits ?? 0;
+    const newCredits = Math.min(
+      currentCredits + Math.max(0, cfg.credits - currentGrant),
+      cfg.credits,
+    );
     await admin
       .from("profiles")
-      .update({ plan, credits: cfg.credits })
+      .update({ plan, credits: newCredits })
       .eq("id", profile.userId);
     return Response.json({ changed: true, plan });
   }
