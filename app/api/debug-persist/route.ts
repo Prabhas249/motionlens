@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { FFMPEG } from "@/lib/ffmpeg";
-import { r2Delete, presignGet } from "@/lib/r2";
+import { r2Put, r2Delete, presignGet } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -80,6 +80,29 @@ export async function GET(req: Request) {
     }
   } catch (e) {
     report.r2_put = `ERROR: ${e instanceof Error ? e.message : String(e)}`;
+  }
+
+  // 4b. the app's ACTUAL r2Put (module-level AwsClient in lib/r2) — run 3x to
+  // catch flakiness; this is the exact call the persist path makes.
+  const libTries: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    try {
+      const ok = await r2Put(`debug/lib-probe-${i}.txt`, Buffer.from("probe"), "text/plain");
+      libTries.push(ok ? "ok" : "not-ok");
+      if (ok) await r2Delete(`debug/lib-probe-${i}.txt`);
+    } catch (e) {
+      libTries.push(`ERROR: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  report.r2_put_lib = libTries;
+  // and one payload closer to a real clip (2MB) — size-dependent failures
+  try {
+    const big = Buffer.alloc(2 * 1024 * 1024, 7);
+    const ok = await r2Put("debug/lib-probe-big.bin", big, "video/mp4");
+    report.r2_put_lib_2mb = ok ? "ok" : "not-ok";
+    if (ok) await r2Delete("debug/lib-probe-big.bin");
+  } catch (e) {
+    report.r2_put_lib_2mb = `ERROR: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   // 5. service-role Supabase client can see/update analyses?
