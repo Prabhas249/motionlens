@@ -1,10 +1,13 @@
 import { getProfile } from "@/lib/profile";
+import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdmin } from "@supabase/supabase-js";
 import { dodoFetch, PLANS, type PaidPlan } from "@/lib/dodo";
 
 export const runtime = "nodejs";
 
-// Creates a Dodo subscription checkout for the signed-in user and returns its
-// hosted payment link. user_id rides in metadata so the webhook can grant the plan.
+// Free → paid: hosted checkout (full price, redirect).
+// Paid → other paid: change-plan on the SAME subscription with proration
+//   (Dodo charges only the prorated difference — no full re-charge).
 export async function POST(req: Request) {
   const profile = await getProfile();
   if (!profile) return Response.json({ error: "Not signed in" }, { status: 401 });
@@ -22,6 +25,46 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unknown plan." }, { status: 400 });
   }
 
+  const supabase = await createClient();
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("plan, dodo_subscription_id")
+    .eq("id", profile.userId)
+    .single();
+  const currentPlan = (prof?.plan as string) ?? "free";
+  const subId = prof?.dodo_subscription_id as string | null;
+
+  if (currentPlan === plan) {
+    return Response.json({ error: "You're already on this plan." }, { status: 400 });
+  }
+
+  // --- existing paid subscriber switching plans → prorated change on the same sub ---
+  if (subId && currentPlan !== "free") {
+    const res = await dodoFetch(`/subscriptions/${subId}/change-plan`, {
+      method: "POST",
+      body: JSON.stringify({
+        product_id: cfg.product,
+        proration_billing_mode: "prorated_immediately",
+        quantity: 1,
+      }),
+    });
+    if (!res.ok) {
+      return Response.json({ error: "Couldn't change your plan — try again." }, { status: 502 });
+    }
+    // Reflect immediately (change-plan may not fire a webhook we handle).
+    const admin = createAdmin(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } },
+    );
+    await admin
+      .from("profiles")
+      .update({ plan, credits: cfg.credits })
+      .eq("id", profile.userId);
+    return Response.json({ changed: true, plan });
+  }
+
+  // --- new subscriber (free → paid): hosted checkout, full price ---
   const origin = new URL(req.url).origin;
   const res = await dodoFetch("/subscriptions", {
     method: "POST",
@@ -31,12 +74,10 @@ export async function POST(req: Request) {
       payment_link: true,
       return_url: `${origin}/settings/billing?upgraded=1`,
       customer: { email: profile.email, name: profile.name },
-      // Real billing is collected on Dodo's hosted page; this is just a seed.
       billing: { country: "US", city: "NA", state: "NA", street: "NA", zipcode: "00000" },
       metadata: { user_id: profile.userId, plan },
     }),
   });
-
   if (!res.ok) {
     return Response.json({ error: "Couldn't start checkout — try again." }, { status: 502 });
   }

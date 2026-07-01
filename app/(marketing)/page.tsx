@@ -1,8 +1,7 @@
 import { LazyDither } from "@marketing/components/animations/lazy-dither";
-import { CompanyShowcase } from "@marketing/components/section/company-showcase";
+import { ExamplesSection } from "@marketing/components/section/examples-section";
 import { ConnectSection } from "@marketing/components/section/connection-section";
 import { CTASection } from "@marketing/components/section/cta-section";
-import { DemoSection } from "@marketing/components/section/demo-section";
 import { FAQSection } from "@marketing/components/section/faq-section";
 import { FeatureSection } from "@marketing/components/section/feature-section";
 import { Footer } from "@marketing/components/section/footer";
@@ -16,8 +15,7 @@ export default function Home() {
     <main className="flex flex-col">
       <HeroSection />
       <div className="border-x border-border divide-y divide-border">
-        <DemoSection />
-        <CompanyShowcase />
+        <ExamplesSection />
         <HowItWorksSection />
         <WorkflowConnectSection />
         <FeatureSection />

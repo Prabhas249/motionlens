@@ -320,6 +320,35 @@ export const siteConfig = {
             },
         ],
     },
+    examplesSection: {
+        badge: {
+            icon: <Icons.magicStar className="size-4 text-muted-foreground" />,
+            text: "Examples",
+        },
+        title: (<>Animations you can <Highlight>recreate</Highlight></>),
+        description:
+            "Real UI motion, decoded into a Blueprint your agent can build. Drop in a clip like these and ship the feel — not a guess.",
+        // Real clips self-hosted from /public/examples. Captions describe the MOTION
+        // (what MotionLens decodes). `credit` is the source X handle — keep it shown.
+        examples: [
+            { id: "ex01", title: "Multi-step confirm — screen slides, checklist staggers in", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex01.jpg", video: "/examples/ex01.mp4" },
+            { id: "ex02", title: "Lesson complete — mascot bounces, XP pops in", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex02.jpg", video: "/examples/ex02.mp4" },
+            { id: "ex03", title: "3D logo rotates in as a payment flows across", tag: "Web", credit: "@60fpsdesign", poster: "/examples/ex03.jpg", video: "/examples/ex03.mp4" },
+            { id: "ex04", title: "Map pulls back to reveal friends dropping in", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex04.jpg", video: "/examples/ex04.mp4" },
+            { id: "ex05", title: "Reward chest bursts open, XP boost slides up", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex05.jpg", video: "/examples/ex05.mp4" },
+            { id: "ex06", title: "Highlighter drags across text, wiping in colour", tag: "Web", credit: "@60fpsdesign", poster: "/examples/ex06.jpg", video: "/examples/ex06.mp4" },
+            { id: "ex07", title: "Glitchy RGB logo resolves into a crisp wordmark", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex07.jpg", video: "/examples/ex07.mp4" },
+            { id: "ex08", title: "Liquid distortion melts away to a sharp photo", tag: "iOS", credit: "@spottedinprod", poster: "/examples/ex08.jpg", video: "/examples/ex08.mp4" },
+            { id: "ex09", title: "A hand-drawn CD spins in a retro music maker", tag: "iOS", credit: "@spottedinprod", poster: "/examples/ex09.jpg", video: "/examples/ex09.mp4" },
+        ] as {
+            id: string;
+            title: string;
+            tag: string;
+            credit: string;
+            poster: string;
+            video?: string;
+        }[],
+    },
     workflowSection: {
         badge: {
             icon: <Icons.terminal className="size-4 text-muted-foreground" />,

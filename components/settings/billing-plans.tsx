@@ -69,11 +69,16 @@ export function BillingPlans({ currentPlan }: { currentPlan: string }) {
         body: JSON.stringify({ plan: planId }),
       });
       const d = await r.json();
-      if (d.url) window.location.href = d.url;
-      else {
-        setNotice(d.error || "Couldn't start checkout.");
-        setLoading(null);
+      if (d.url) {
+        window.location.href = d.url; // new subscriber → hosted checkout
+        return;
       }
+      if (d.changed) {
+        window.location.reload(); // prorated plan change applied → refresh
+        return;
+      }
+      setNotice(d.error || "Couldn't start checkout.");
+      setLoading(null);
     } catch {
       setNotice("Couldn't start checkout — try again.");
       setLoading(null);
@@ -158,7 +163,7 @@ export function BillingPlans({ currentPlan }: { currentPlan: string }) {
                     onClick={() => upgrade(plan.id)}
                   >
                     {loading === plan.id && <Loader2Icon className="animate-spin" />}
-                    Upgrade to {plan.name}
+                    {currentPlan === "free" ? "Upgrade to" : "Switch to"} {plan.name}
                   </Button>
                 )}
               </div>
@@ -166,6 +171,12 @@ export function BillingPlans({ currentPlan }: { currentPlan: string }) {
           );
         })}
       </div>
+      {currentPlan !== "free" && (
+        <p className="text-xs text-muted-foreground">
+          Switching plans is prorated — you&apos;re only charged the difference for the
+          rest of your billing period.
+        </p>
+      )}
       {notice && (
         <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
           {notice}
