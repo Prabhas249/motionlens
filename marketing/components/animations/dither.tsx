@@ -9,8 +9,8 @@ import * as THREE from "three";
 // CodeForge template default — bold monochrome B&W dither that flips with theme:
 // light mode = black waves on white, dark mode = white waves on near-black.
 const DEFAULT_WAVE_COLOR: [number, number, number] = [0.85, 0.85, 0.87]; // dark-mode wave (near-white)
-const DEFAULT_WAVE_LIGHT: [number, number, number] = [0.08, 0.08, 0.09]; // light-mode wave (near-black)
-const DEFAULT_BG_LIGHT: [number, number, number] = [0.96, 0.96, 0.97]; // light-mode base (near-white)
+const DEFAULT_WAVE_LIGHT: [number, number, number] = [0.0, 0.0, 0.0]; // light-mode wave (pure black — denser black dots)
+const DEFAULT_BG_LIGHT: [number, number, number] = [0.85, 0.85, 0.87]; // light-mode base (darker → more black dots)
 const DEFAULT_BG_DARK: [number, number, number] = [0.04, 0.04, 0.05]; // dark-mode base (near-black)
 
 const waveVertexShader = `
