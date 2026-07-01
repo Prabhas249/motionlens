@@ -12,7 +12,7 @@ export function HeroSection() {
     return (
         <section
             id="hero"
-            className="relative flex min-h-svh w-screen left-1/2 -ml-[50vw] flex-col items-center justify-center overflow-hidden px-4 py-16 md:py-24"
+            className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden border-x border-b border-border px-4 py-16 md:py-24"
         >
             {/* clean editorial background — replaces the photographic sky */}
             <div className="pointer-events-none absolute inset-0 -z-10 [background:radial-gradient(125%_125%_at_50%_10%,var(--background)_40%,var(--secondary)_100%)]" />
