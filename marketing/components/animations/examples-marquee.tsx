@@ -22,7 +22,7 @@ export const ExampleCard = ({ title, tag, credit, poster, video }: ExampleClip) 
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
             {video ? (
                 <video
-                    className="h-full w-full object-cover"
+                    className="h-full w-full origin-[42%_42%] scale-[1.2] object-cover"
                     src={video}
                     poster={poster}
                     autoPlay
@@ -35,7 +35,7 @@ export const ExampleCard = ({ title, tag, credit, poster, video }: ExampleClip) 
                 <img
                     src={poster}
                     alt={title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    className="h-full w-full origin-[42%_42%] scale-[1.2] object-cover transition-transform duration-500 group-hover:scale-[1.24]"
                 />
             )}
 

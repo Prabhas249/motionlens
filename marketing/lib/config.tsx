@@ -331,6 +331,9 @@ export const siteConfig = {
             { id: "ex07", title: "Glitchy RGB logo resolves into a crisp wordmark", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex07.jpg", video: "/examples/ex07.mp4" },
             { id: "ex08", title: "Liquid distortion melts away to a sharp photo", tag: "iOS", credit: "@spottedinprod", poster: "/examples/ex08.jpg", video: "/examples/ex08.mp4" },
             { id: "ex09", title: "A hand-drawn CD spins in a retro music maker", tag: "iOS", credit: "@spottedinprod", poster: "/examples/ex09.jpg", video: "/examples/ex09.mp4" },
+            { id: "ex10", title: "A radio call types in as a plane banks into frame", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex10.jpg", video: "/examples/ex10.mp4" },
+            { id: "ex11", title: "UI buttons tumble and scatter with real physics", tag: "Web", credit: "@raunofreiberg", poster: "/examples/ex11.jpg", video: "/examples/ex11.mp4" },
+            { id: "ex12", title: "Glowing cards pulse through a dark cinema picker", tag: "iOS", credit: "@60fpsdesign", poster: "/examples/ex12.jpg", video: "/examples/ex12.mp4" },
         ] as {
             id: string;
             title: string;

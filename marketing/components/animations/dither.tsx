@@ -6,11 +6,10 @@ import { Effect } from "postprocessing";
 import { forwardRef, useEffect, useRef } from "react";
 import * as THREE from "three";
 
-// Brand cobalt (#2A48F0) — vivid on dark; softened (periwinkle) on light so it
-// reads as a calm texture on a white page instead of loud high-contrast noise.
-const DEFAULT_WAVE_COLOR: [number, number, number] = [0.165, 0.282, 0.941];
-// Same bold band in both modes: black base + brand cobalt (white-base felt off on the page).
-const DEFAULT_WAVE_LIGHT: [number, number, number] = [0.165, 0.282, 0.941];
+// Subtle neutral dark texture (template default look) — a refined near-black dither
+// band in both modes, not a loud cobalt bar. Wave = faint gray over a near-black base.
+const DEFAULT_WAVE_COLOR: [number, number, number] = [0.22, 0.22, 0.25];
+const DEFAULT_WAVE_LIGHT: [number, number, number] = [0.22, 0.22, 0.25];
 const DEFAULT_BG_LIGHT: [number, number, number] = [0.035, 0.035, 0.045];
 const DEFAULT_BG_DARK: [number, number, number] = [0.035, 0.035, 0.045];
 
