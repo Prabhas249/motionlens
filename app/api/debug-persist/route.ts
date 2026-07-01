@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { FFMPEG } from "@/lib/ffmpeg";
-import { r2Put, r2Delete, presignGet } from "@/lib/r2";
+import { r2Delete, presignGet } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -54,16 +54,29 @@ export async function GET(req: Request) {
     report.tmp_write = `ERROR: ${e instanceof Error ? e.message : String(e)}`;
   }
 
-  // 4. R2 server-side PUT + presigned GET round-trip?
+  // 4. R2 server-side PUT + presigned GET round-trip? Report the raw R2
+  // rejection (status + XML error body) instead of a boolean.
   try {
-    const key = "debug/persist-probe.txt";
-    const ok = await r2Put(key, Buffer.from("probe"), "text/plain");
-    report.r2_put = ok ? "ok" : "PUT returned not-ok";
-    if (ok) {
-      const url = await presignGet(key, 60);
-      const res = await fetch(url);
-      report.r2_read_back = res.ok ? "ok" : `GET ${res.status}`;
-      await r2Delete(key);
+    const { AwsClient } = await import("aws4fetch");
+    const r2 = new AwsClient({
+      accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+      service: "s3",
+      region: "auto",
+    });
+    const url = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${process.env.R2_BUCKET}/debug/persist-probe.txt`;
+    const res = await r2.fetch(url, {
+      method: "PUT",
+      body: new Uint8Array(Buffer.from("probe")),
+      headers: { "Content-Type": "text/plain" },
+    });
+    report.r2_put = `${res.status} ${res.statusText}`;
+    if (!res.ok) report.r2_put_body = (await res.text()).slice(0, 500);
+    else {
+      const g = await presignGet("debug/persist-probe.txt", 60);
+      const rb = await fetch(g);
+      report.r2_read_back = rb.ok ? "ok" : `GET ${rb.status}`;
+      await r2Delete("debug/persist-probe.txt");
     }
   } catch (e) {
     report.r2_put = `ERROR: ${e instanceof Error ? e.message : String(e)}`;

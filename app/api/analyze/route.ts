@@ -13,7 +13,11 @@ import { promisify } from "node:util";
 const pexecFile = promisify(execFile);
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// Precision runs (Gemini video processing + storyboard + the end-of-stream clip
+// re-encode/persist) can blow well past 120s — the persist step is the first
+// casualty of a timeout because it runs last. 300s is allowed on all plans
+// with fluid compute.
+export const maxDuration = 300;
 
 // Free tier = ~20 requests/DAY *per model*. Switching models = a fresh quota bucket.
 // Quality order: gemini-3.5-flash > gemini-3-flash-preview > gemini-2.5-flash (all work on this key).
@@ -605,7 +609,7 @@ type EnergyResult = { text: string; spans: Span[]; samples: { t: number; e: numb
 async function motionEnergy(videoPath: string): Promise<EnergyResult | null> {
   try {
     const { stdout, stderr } = await pexecFile(
-      "ffmpeg",
+      FFMPEG,
       [
         "-i", videoPath,
         "-vf", "fps=20,tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-",
@@ -1391,8 +1395,15 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
                 const framesKey = `${user.id}/frames/${analysisId}.json`;
                 if (await r2Put(framesKey, Buffer.from(JSON.stringify(frames)), "application/json")) {
                   media.frames_key = framesKey;
+                } else {
+                  console.error(`[persist] frames r2Put not-ok for ${analysisId}`);
                 }
-              } catch { /* keep the analysis even if the storyboard copy fails */ }
+              } catch (e) {
+                // keep the analysis even if the storyboard copy fails
+                console.error(`[persist] frames upload failed for ${analysisId}:`, e);
+              }
+            } else {
+              console.error(`[persist] no frames to save for ${analysisId} (storyboard empty)`);
             }
             // Compressed 720p clip → R2 for replay.
             if (tmp) {
@@ -1406,8 +1417,15 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
                 ]);
                 const small = await readFile(outPath);
                 const clipKeyFinal = `${user.id}/clips/${analysisId}.mp4`;
-                if (await r2Put(clipKeyFinal, small, "video/mp4")) media.clip_key = clipKeyFinal;
-              } catch { /* keep the analysis even if the clip copy fails */ }
+                if (await r2Put(clipKeyFinal, small, "video/mp4")) {
+                  media.clip_key = clipKeyFinal;
+                } else {
+                  console.error(`[persist] clip r2Put not-ok for ${analysisId}`);
+                }
+              } catch (e) {
+                // keep the analysis even if the clip copy fails
+                console.error(`[persist] clip compress/upload failed for ${analysisId}:`, e);
+              }
               finally { await unlink(outPath).catch(() => {}); }
             }
             if (Object.keys(media).length) {
@@ -1417,8 +1435,11 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
                   process.env.SUPABASE_SERVICE_ROLE_KEY!,
                   { auth: { autoRefreshToken: false, persistSession: false } },
                 );
-                await adminSb.from("analyses").update(media).eq("id", analysisId);
-              } catch { /* ignore */ }
+                const { error } = await adminSb.from("analyses").update(media).eq("id", analysisId);
+                if (error) console.error(`[persist] media update failed for ${analysisId}:`, error.message);
+              } catch (e) {
+                console.error(`[persist] media update threw for ${analysisId}:`, e);
+              }
             }
           }
           controller.close();
