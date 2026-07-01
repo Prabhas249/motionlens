@@ -11,6 +11,7 @@ import {
   type Mode,
 } from "@/components/blueprint-view"
 import { CopilotChat } from "@/components/copilot-chat"
+import { createClient } from "@/lib/supabase/client"
 
 export default function Page() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
@@ -44,7 +45,7 @@ export default function Page() {
 
   const busy = phase === "uploading" || phase === "analyzing"
 
-  function analyze(file: File, context: string, screenshot?: File | null) {
+  async function analyze(file: File, context: string, screenshot?: File | null) {
     if (!file.type.startsWith("video/")) {
       setError("Please choose a video file (mp4, mov, webm).")
       setPhase("error")
@@ -57,8 +58,31 @@ export default function Page() {
     setStoryboardLoading(false)
     setPhase("uploading")
 
+    // Upload the clip straight to Storage — Vercel caps the /api body at 4.5MB,
+    // so we never send the video through the function; we pass its path instead.
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setError("Please sign in to run an analysis.")
+      setPhase("error")
+      return
+    }
+    const clean = file.name.replace(/[^\w.-]/g, "_")
+    const videoPath = `${user.id}/${Date.now()}-${clean}`
+    const up = await supabase.storage
+      .from("clips")
+      .upload(videoPath, file, { contentType: file.type || "video/quicktime", upsert: false })
+    if (up.error) {
+      setError("Upload failed — please try again.")
+      setPhase("error")
+      return
+    }
+    setPhase("analyzing")
+
     const form = new FormData()
-    form.set("video", file)
+    form.set("videoPath", videoPath)
     form.set("mode", mode)
     if (context.trim()) form.set("context", context.trim())
     if (screenshot) form.set("screenshot", screenshot)

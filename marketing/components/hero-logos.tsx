@@ -70,9 +70,9 @@ export function HeroLogos({ className }: { className?: string }) {
             data-shape="circle"
             data-restitution="0.6"
             data-friction="0"
-            className="flex h-16 w-16 items-center justify-center rounded-full border border-black/5 bg-white/90 shadow-lg shadow-black/10 select-none"
+            className="flex h-14 w-14 items-center justify-center rounded-full border border-black/[0.06] bg-white shadow-md shadow-black/[0.06] select-none dark:border-white/10 dark:bg-neutral-900"
           >
-            <Logo size={32} />
+            <Logo size={28} />
           </div>
         );
       })}

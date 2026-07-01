@@ -1,47 +1,80 @@
+"use client";
+
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { siteConfig } from "@marketing/lib/config";
 import { Icons } from "@marketing/components/icons";
+import { MotionLensLogo } from "@marketing/components/motionlens-logo";
+import { FlickeringGridText } from "@marketing/components/ui/flickering-grid-text";
+import { useMobile } from "@marketing/hooks/use-mobile";
 
 export function Footer() {
-    const { footerLinks, name } = siteConfig;
+    const { footerLinks, hero } = siteConfig;
+    const tablet = useMobile(1024);
 
     return (
-        <footer className="w-full">
-            <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x  divide-border">
-                {footerLinks.map((section) => (
-                    <div
-                        key={section.title}
-                        className="flex flex-col gap-4 p-8 lg:pt-18"
-                    >
-                        <h3 className="text-sm font-semibold text-foreground">
-                            {section.title}
-                        </h3>
-                        <ul className="flex flex-col gap-3">
-                            {section.links.map((link) => (
-                                <li key={link.id}>
-                                    <Link
-                                        href={link.url}
-                                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        {link.title}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
+        <footer id="footer" className="w-full pb-0">
+            <div className="flex flex-col p-10 md:flex-row md:items-start md:justify-between">
+                <div className="mx-0 flex max-w-xs flex-col items-start justify-start gap-y-5">
+                    <Link href="/" className="flex items-center gap-2.5">
+                        <span className="flex size-7 items-center justify-center rounded-lg bg-[#2A48F0] text-white shadow-sm">
+                            <MotionLensLogo className="size-[18px]" animated={false} />
+                        </span>
+                        <span className="font-mono text-base font-semibold lowercase tracking-tight text-foreground">
+                            motionlens
+                        </span>
+                    </Link>
+                    <p className="font-medium tracking-tight text-muted-foreground">
+                        {hero.description}
+                    </p>
+                    <div className="flex items-center gap-2 dark:hidden">
+                        <Icons.soc2 className="size-12" />
+                        <Icons.hipaa className="size-12" />
+                        <Icons.gdpr className="size-12" />
                     </div>
-                ))}
-
-                <div className="flex flex-col gap-4 p-8 lg:pt-18 items-start md:items-center justify-start">
-                    <Icons.soc2 className="w-20 h-20" />
-                    <Icons.hipaa className="w-20 h-20" />
-                    <Icons.gdpr className="w-20 h-20" />
+                    <div className="hidden items-center gap-2 dark:flex">
+                        <Icons.soc2Dark className="size-12" />
+                        <Icons.hipaaDark className="size-12" />
+                        <Icons.gdprDark className="size-12" />
+                    </div>
+                </div>
+                <div className="pt-5 md:w-1/2">
+                    <div className="flex flex-col items-start justify-start gap-y-5 md:flex-row md:items-start md:justify-between lg:pl-10">
+                        {footerLinks.map((column) => (
+                            <ul key={column.title} className="flex flex-col gap-y-2">
+                                <li className="mb-2 text-sm font-semibold text-foreground">
+                                    {column.title}
+                                </li>
+                                {column.links.map((link) => (
+                                    <li
+                                        key={link.id}
+                                        className="group inline-flex cursor-pointer items-center justify-start gap-1 text-[15px]/snug text-muted-foreground"
+                                    >
+                                        <Link href={link.url}>{link.title}</Link>
+                                        <div className="flex size-4 translate-x-0 transform items-center justify-center rounded border border-border opacity-0 transition-all duration-300 ease-out group-hover:translate-x-1 group-hover:opacity-100">
+                                            <ChevronRight className="h-3.5 w-3.5" />
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ))}
+                    </div>
                 </div>
             </div>
-
-            <div className="border-t border-border py-4">
-                <p className="text-sm text-muted-foreground text-center">
-                    © {new Date().getFullYear()} {name}. All rights reserved.
-                </p>
+            <div className="relative z-0 mt-24 h-48 w-full md:h-64">
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-transparent from-40% to-background" />
+                <div className="absolute inset-0 mx-6">
+                    <FlickeringGridText
+                        text={tablet ? "MotionLens" : "Show, don't describe."}
+                        fontSize={tablet ? 60 : 84}
+                        className="h-full w-full"
+                        squareSize={2}
+                        gridGap={tablet ? 2 : 3}
+                        color="#6B7280"
+                        maxOpacity={0.3}
+                        flickerChance={0.1}
+                    />
+                </div>
             </div>
         </footer>
     );

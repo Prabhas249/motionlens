@@ -1062,8 +1062,12 @@ export async function POST(req: Request) {
     const ai = new GoogleGenAI({ apiKey });
 
     const form = await req.formData();
-    const file = form.get("video");
-    if (!(file instanceof File)) return Response.json({ error: "No video uploaded." }, { status: 400 });
+    // The client uploads the clip to Storage and sends only its path here — this
+    // keeps the request body tiny (Vercel caps function bodies at 4.5MB).
+    const videoPath = form.get("videoPath");
+    if (typeof videoPath !== "string" || !videoPath) {
+      return Response.json({ error: "No video uploaded." }, { status: 400 });
+    }
 
     // Mode decides how many credits the run spends: Standard 1, Annotated 2, Precision 3.
     const modeRaw = form.get("mode");
@@ -1114,20 +1118,28 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       ? `\n\nFINAL-FRAME SCREENSHOT PROVIDED — a sharp, full-resolution still of the FINAL settled state is attached alongside the video. The VIDEO is the source of truth for MOTION (what moves, the order, timing, easing). The SCREENSHOT is the source of truth for the EXACT static appearance of the end state: real colors (read the true hex), exact element sizes/proportions (px), fonts, corner radii, spacing, and final layout. When the (compressed, sometimes blurry) video and the screenshot disagree on APPEARANCE, TRUST THE SCREENSHOT. Bake its exact values into "elements", "spatial", the motion from->to endpoints, and especially "agent_prompt" so a developer can recreate it pixel-for-pixel.`
       : "";
 
-    // clean ASCII name (macOS recordings have U+202F that breaks headers)
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const ext = (file.name.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "mp4").toLowerCase();
+    // Pull the clip from Storage (RLS lets the user read only their own path).
+    const dl = await supa.storage.from("clips").download(videoPath);
+    if (dl.error || !dl.data) {
+      if (charged && supa) {
+        try { await supa.rpc("refund_credit", { p_amount: creditCost }); } catch { /* ignore */ }
+      }
+      return Response.json({ error: "Couldn't read the uploaded clip — please try again." }, { status: 400 });
+    }
+    const bytes = Buffer.from(await dl.data.arrayBuffer());
+    const ext = (videoPath.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "mp4").toLowerCase();
     const safeName = `clip-${Date.now()}.${ext}`;
     tmpPath = join(tmpdir(), safeName);
     await writeFile(tmpPath, bytes);
+    // On disk now — free the storage object (best effort).
+    supa.storage.from("clips").remove([videoPath]).then(() => {}, () => {});
 
     // Measure the motion-energy timeline locally while Gemini uploads/processes the video (parallel, free).
     const energyP = motionEnergy(tmpPath);
 
-    // Some clients (e.g. the MCP server) send the blob as application/octet-stream;
-    // trust file.type only when it's a real video type, otherwise derive from the extension.
     const EXT_MIME: Record<string, string> = { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", m4v: "video/x-m4v" };
-    const videoMime = file.type && file.type.startsWith("video/") ? file.type : (EXT_MIME[ext] || "video/mp4");
+    const videoMime =
+      dl.data.type && dl.data.type.startsWith("video/") ? dl.data.type : (EXT_MIME[ext] || "video/mp4");
     let uploaded = await ai.files.upload({ file: tmpPath, config: { mimeType: videoMime, displayName: safeName } });
     while (uploaded.state === "PROCESSING") {
       await new Promise((r) => setTimeout(r, 1500));
