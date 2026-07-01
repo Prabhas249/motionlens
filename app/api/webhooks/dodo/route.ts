@@ -1,6 +1,6 @@
 import { Webhook } from "standardwebhooks";
 import { createClient as createAdmin } from "@supabase/supabase-js";
-import { planForProduct } from "@/lib/dodo";
+import { planForProduct, dodoFetch } from "@/lib/dodo";
 
 export const runtime = "nodejs";
 
@@ -68,20 +68,35 @@ export async function POST(req: Request) {
       const update: Record<string, unknown> = { plan: mapping.plan };
       if (customer.customer_id) update.dodo_customer_id = customer.customer_id;
       if (data.subscription_id) update.dodo_subscription_id = data.subscription_id;
-      // Only (re)grant the full monthly credits on a genuine renewal, or when a
-      // brand-new subscriber first activates. A plan CHANGE also fires "active",
-      // but the checkout route already set the prorated delta — clobbering it with
-      // the full grant would refill the allotment on every switch (farmable). So on
-      // "active" we grant only if the user wasn't already on a paid plan.
+
+      // Current billing period (authoritative from Dodo). A real renewal advances
+      // it; a mid-cycle plan switch — which ALSO fires subscription.renewed — keeps
+      // the same period, so it's the reliable signal for "should we refill".
+      let period = (data.next_billing_date as string) || "";
+      const subId = data.subscription_id as string | undefined;
+      if (!period && subId) {
+        try {
+          const s = await dodoFetch(`/subscriptions/${subId}`);
+          if (s.ok) period = ((await s.json())?.next_billing_date as string) || "";
+        } catch {
+          /* ignore — fall through without a period */
+        }
+      }
+
       const { data: cur } = await sb
         .from("profiles")
-        .select("plan")
+        .select("plan, credit_period")
         .eq("id", id)
         .single();
       const wasPaid = cur?.plan === "pro" || cur?.plan === "studio";
-      if (type === "subscription.renewed" || !wasPaid) {
-        update.credits = mapping.credits;
-      }
+      const newPeriod = !!period && period !== (cur?.credit_period ?? null);
+
+      // Refill the full monthly grant ONLY for a brand-new subscriber or a genuine
+      // new billing period. A plan switch keeps the same period → leave the prorated
+      // delta the checkout route already set (otherwise switching = free refill).
+      if (!wasPaid || newPeriod) update.credits = mapping.credits;
+      if (period) update.credit_period = period;
+
       await sb.from("profiles").update(update).eq("id", id);
     }
   } else if (type === "subscription.expired") {
