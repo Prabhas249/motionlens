@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icons } from "@marketing/components/icons";
 import { cn } from "@marketing/lib/utils";
 
@@ -56,7 +57,19 @@ export const siteConfig = {
             { id: 3, name: "How it works", href: "#how-it-works" },
             { id: 4, name: "Pricing", href: "#pricing" },
             { id: 5, name: "FAQ", href: "#faq" },
-        ],
+        ] as {
+            id: number;
+            name: string;
+            href: string;
+            submenu?: {
+                id: number;
+                icon: ReactNode;
+                name: string;
+                href: string;
+                description: string;
+                image?: string;
+            }[];
+        }[],
     },
     hero: {
         badgeIcon: <Icons.stackedIcons className="size-4" />,
