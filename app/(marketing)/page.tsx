@@ -13,8 +13,10 @@ import { HowItWorksSection } from "@marketing/components/section/how-it-works-se
 export default function Home() {
   return (
     <main className="flex w-full flex-col">
-      <div className="flex flex-col divide-y divide-border">
-        <HeroSection />
+      {/* hero: no side lines, open background */}
+      <HeroSection />
+      {/* framed column starts at the examples strip */}
+      <div className="flex flex-col divide-y divide-border border-x border-t border-border">
         <ExamplesSection />
         <HowItWorksSection />
         <WorkflowConnectSection />
