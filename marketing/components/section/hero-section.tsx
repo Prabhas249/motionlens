@@ -152,9 +152,11 @@ function RotatingWord() {
     return (
         <span className="relative inline-grid justify-items-center align-bottom text-[#2A48F0]">
             <style>{`
+                /* opacity ONLY — blur/translate enlarged the painted bounds every
+                   cycle and re-fired the LCP entry */
                 @keyframes heroWordCycle {
-                    0%, 20% { opacity: 1; filter: blur(0); transform: translateY(0); }
-                    24%, 100% { opacity: 0; filter: blur(6px); transform: translateY(4px); }
+                    0%, 20% { opacity: 1; }
+                    24%, 100% { opacity: 0; }
                 }
                 @media (prefers-reduced-motion: reduce) {
                     .hero-word { animation: none !important; }
