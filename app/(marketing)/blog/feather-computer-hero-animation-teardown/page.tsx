@@ -90,7 +90,12 @@ export default function Page() {
         <Code>{`analyze the first 10 seconds of https://feather.computer with MotionLens in precision mode`}</Code>
         <p>
           MotionLens recorded the page headlessly with real frame timing, watched it, and returned the
-          blueprint — motions, timings, easing, and an agent-ready prompt.{" "}
+          blueprint — motions, timings, easing, and an agent-ready prompt. The full interactive
+          version — replay, storyboard, and the measured motion table — lives in the gallery:{" "}
+          <Link href="/animations/feather-computer-radial-explosion" className="font-medium text-[#2A48F0] hover:underline">
+            feather.computer, decoded
+          </Link>
+          .{" "}
           <Link href="/login" className="font-medium text-[#2A48F0] hover:underline">Try it on any site</Link> —
           new accounts get 5 free credits, no card.
         </p>

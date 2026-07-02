@@ -793,6 +793,7 @@ export const siteConfig = {
             links: [
                 { id: 1, title: "Features", url: "/#features" },
                 { id: 2, title: "Pricing", url: "/#pricing" },
+                { id: 21, title: "Gallery", url: "/animations" },
                 { id: 3, title: "Integrations", url: "/integrations" },
                 { id: 4, title: "Playground", url: "/login" },
                 { id: 5, title: "Multi-Agent Workflows", url: "/multi-agent-workflows" },

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { POSTS } from "@marketing/lib/posts";
+import { listShowcaseSlugs } from "@/lib/showcase";
 
 const BASE = "https://motionlens.dev";
 
@@ -7,6 +8,7 @@ const BASE = "https://motionlens.dev";
 const ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
   { path: "/docs", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/animations", priority: 0.9, changeFrequency: "weekly" },
   { path: "/api-reference", priority: 0.8, changeFrequency: "weekly" },
   { path: "/integrations", priority: 0.7, changeFrequency: "monthly" },
   { path: "/multi-agent-workflows", priority: 0.7, changeFrequency: "monthly" },
@@ -20,7 +22,10 @@ const ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.S
   { path: "/terms", priority: 0.2, changeFrequency: "yearly" },
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Gallery pages are DB-driven — the sitemap grows as showcases are curated.
+  let slugs: string[] = [];
+  try { slugs = await listShowcaseSlugs(); } catch { /* sitemap still ships */ }
   return [
     ...ROUTES.map((r) => ({
       url: `${BASE}${r.path}`,
@@ -33,6 +38,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(p.date),
       changeFrequency: "monthly" as const,
       priority: 0.7,
+    })),
+    ...slugs.map((slug) => ({
+      url: `${BASE}/animations/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
     })),
   ];
 }
