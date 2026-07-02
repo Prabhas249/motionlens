@@ -35,9 +35,9 @@ export function PricingSection() {
                                 Build more. Pay less. Scale smart.
                             </h3>
                             <p className="text-balance text-muted-foreground">
-                                Start with a 3-day free trial on any plan — full
-                                access, cancel anytime. Pay only when your AI agent
-                                proves its worth.
+                                Start free with 5 credits — no card. Upgrade
+                                anytime, cancel anytime. Pay only when your AI
+                                agent proves its worth.
                             </p>
                         </div>
                         <div className="pt-4">

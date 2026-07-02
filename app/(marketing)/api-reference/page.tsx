@@ -126,7 +126,7 @@ export default function ApiReferencePage() {
             <Section title="Auth & limits">
                 <p>
                     The MCP server authenticates against your MotionLens account; each analysis
-                    consumes credits by mode (1 / 2 / 3). Failed analyses are refunded
+                    consumes credits by mode (Annotated 2 · Precision 3). Failed analyses are refunded
                     automatically. Need higher throughput? Reach us at{" "}
                     <a
                         href="mailto:support@motionlens.dev"

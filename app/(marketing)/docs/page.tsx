@@ -106,7 +106,7 @@ export default function DocsPage() {
 
             <Section title="Credits & plans">
                 <p>
-                    Analyses cost credits by mode (1 / 2 / 3). Free includes 5 credits, Pro is
+                    Analyses cost credits by mode (Annotated 2 · Precision 3). Free includes 5 credits, Pro is
                     $9/mo for 150, Studio is $19/mo for 300. Refunds are automatic if an analysis
                     fails. See{" "}
                     <a href="/#pricing" className="font-medium text-[#2A48F0] hover:underline">
