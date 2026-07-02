@@ -45,7 +45,7 @@ export const siteConfig = {
     ],
     links: {
         email: "support@motionlens.dev",
-        twitter: "https://twitter.com/motionlens",
+        twitter: "https://x.com/Prabhas_24_",
         discord: "https://discord.gg/motionlens",
         github: "https://github.com/motionlens",
         instagram: "https://instagram.com/motionlens",

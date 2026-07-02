@@ -69,6 +69,22 @@ export default async function BillingPage() {
           Upgrade for more credits each month. Code export is always free.
         </p>
         <BillingPlans currentPlan={profile.plan} />
+        <p className="mt-4 text-xs text-muted-foreground">
+          Payment failed or credits missing? We fix billing issues fast —{" "}
+          <a href="mailto:support@motionlens.dev" className="font-medium text-primary hover:underline">
+            support@motionlens.dev
+          </a>{" "}
+          or DM{" "}
+          <a
+            href="https://x.com/Prabhas_24_"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary hover:underline"
+          >
+            @Prabhas_24_
+          </a>{" "}
+          on X.
+        </p>
       </div>
     </div>
   );

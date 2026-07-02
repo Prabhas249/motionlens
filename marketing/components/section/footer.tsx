@@ -35,6 +35,35 @@ export function Footer() {
                     <p className="font-medium tracking-tight text-muted-foreground">
                         {hero.description}
                     </p>
+                    {/* contact — a human answers, and it shows */}
+                    <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+                        <a
+                            href="mailto:support@motionlens.dev"
+                            className="hover:text-foreground transition-colors"
+                        >
+                            support@motionlens.dev
+                        </a>
+                        <p>
+                            Built by{" "}
+                            <a
+                                href="https://x.com/Prabhas_24_"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-[#2A48F0] hover:underline"
+                            >
+                                @Prabhas_24_
+                            </a>{" "}
+                            &amp;{" "}
+                            <a
+                                href="https://x.com/rithiksai03"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-[#2A48F0] hover:underline"
+                            >
+                                @rithiksai03
+                            </a>
+                        </p>
+                    </div>
                 </div>
                 <div className="pt-5 md:w-1/2">
                     <div className="flex flex-col items-start justify-start gap-y-5 md:flex-row md:items-start md:justify-between lg:pl-10">

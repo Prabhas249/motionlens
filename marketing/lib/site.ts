@@ -3,7 +3,7 @@ export const siteConfig = {
     url: "https://motionlens.dev",
     description: "The visual context layer for AI agents.",
     links: {
-        twitter: "https://x.com/motionlens",
+        twitter: "https://x.com/Prabhas_24_",
         github: "https://github.com/motionlens",
     },
 };
