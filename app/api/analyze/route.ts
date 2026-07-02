@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
+import { userIdFromApiKey, adminClient } from "@/lib/api-key";
 import { r2GetBytes, r2Put, r2Delete } from "@/lib/r2";
 import { FFMPEG } from "@/lib/ffmpeg";
 import sharp from "sharp";
@@ -1067,9 +1068,11 @@ export async function POST(req: Request) {
   let rawKey: string | null = null; // raw R2 upload to clean up on any exit path
   let analysisId: string | null = null; // set once the analysis row is saved
   // Credit bookkeeping — so we can refund the run if the engine errors after charging.
-  let supa: Awaited<ReturnType<typeof createClient>> | null = null;
+  let supa: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof adminClient> | null = null;
   let charged = false;
   let creditCost = 1; // credits this run spends (Standard 1 / Annotated 2 / Precision 3) — for refund on error
+  // Set once the credit is consumed; picks the right RPC for the auth method.
+  let refund: () => Promise<void> = async () => {};
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -1091,20 +1094,33 @@ export async function POST(req: Request) {
     creditCost = mode === "precision" ? 3 : mode === "annotated" ? 2 : 1;
 
     // --- auth + mode-weighted credit gate ---
-    // New users start with 5 credits (see the profiles migration). consume_credit
-    // atomically deducts `creditCost` and returns what's left, or NULL if short.
+    // Browser callers carry a session cookie; programmatic callers (the
+    // MotionLens MCP) send an API key. Either way we end with `uid` + a db
+    // client whose writes work for that method (service role for key auth,
+    // since RLS policies key off auth.uid()).
     supa = await createClient();
     const { data: { user } } = await supa.auth.getUser();
-    if (!user) {
+    let uid = user?.id ?? null;
+    const viaKey = !uid;
+    if (!uid) {
+      uid = await userIdFromApiKey(req);
+      if (uid) supa = adminClient();
+    }
+    if (!uid) {
       return Response.json({ error: "Please sign in to run an analysis." }, { status: 401 });
     }
+    const sb = supa;
     // Ownership: a client may only analyze clips it uploaded. Set rawKey (the
     // object we clean up) only AFTER this check so we never delete someone else's.
-    if (!clipKey.startsWith(`${user.id}/`)) {
+    if (!clipKey.startsWith(`${uid}/`)) {
       return Response.json({ error: "Invalid clip." }, { status: 403 });
     }
     rawKey = clipKey;
-    const { data: remaining, error: creditErr } = await supa.rpc("consume_credit", { p_amount: creditCost });
+    // New users start with 5 credits (see the profiles migration). The RPC
+    // atomically deducts `creditCost` and returns what's left, or NULL if short.
+    const { data: remaining, error: creditErr } = viaKey
+      ? await sb.rpc("consume_credit_by_user", { p_user: uid, p_amount: creditCost })
+      : await sb.rpc("consume_credit", { p_amount: creditCost });
     if (creditErr) {
       return Response.json({ error: "Couldn't check your credits — please try again." }, { status: 500 });
     }
@@ -1115,6 +1131,12 @@ export async function POST(req: Request) {
       );
     }
     charged = true;
+    refund = async () => {
+      try {
+        if (viaKey) await sb.rpc("refund_credit_by_user", { p_user: uid, p_amount: creditCost });
+        else await sb.rpc("refund_credit", { p_amount: creditCost });
+      } catch { /* best effort */ }
+    };
     const context = form.get("context");
     const focus = typeof context === "string" ? context.trim() : "";
     const userContext = focus
@@ -1143,15 +1165,26 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     // Pull the raw clip from R2 (free egress, no size cap).
     const bytes = await r2GetBytes(clipKey);
     if (!bytes) {
-      if (charged && supa) {
-        try { await supa.rpc("refund_credit", { p_amount: creditCost }); } catch { /* ignore */ }
-      }
+      if (charged) await refund();
       return Response.json({ error: "Couldn't read the uploaded clip — please try again." }, { status: 400 });
     }
     const ext = (clipKey.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "mp4").toLowerCase();
     const safeName = `clip-${Date.now()}.${ext}`;
     tmpPath = join(tmpdir(), safeName);
     await writeFile(tmpPath, bytes);
+
+    // Enforce the mode clip caps (Standard/Annotated 30s, Precision 10s) BEFORE
+    // any Gemini spend — the client checks too, but the API must not trust it.
+    // Small tolerance so a 30.4s trim isn't rejected.
+    const capS = mode === "precision" ? 10 : 30;
+    const durS = await getDuration(tmpPath);
+    if (durS > capS + 1.5) {
+      if (charged) await refund();
+      return Response.json(
+        { error: `${mode === "precision" ? "Precision" : mode === "annotated" ? "Annotated" : "Standard"} mode caps clips at ${capS}s — this one is ${Math.round(durS)}s. Trim it${mode === "precision" ? " or use Standard/Annotated" : ""} and try again.` },
+        { status: 400 },
+      );
+    }
 
     // Measure the motion-energy timeline locally while Gemini uploads/processes the video (parallel, free).
     const energyP = motionEnergy(tmpPath);
@@ -1164,7 +1197,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       uploaded = await ai.files.get({ name: uploaded.name! });
     }
     if (uploaded.state === "FAILED") {
-      if (charged && supa) { try { await supa.rpc("refund_credit", { p_amount: creditCost }); } catch { /* ignore */ } }
+      if (charged) await refund();
       return Response.json({ error: "MotionLens couldn't process this video — try a shorter clip or Standard mode." }, { status: 500 });
     }
 
@@ -1364,7 +1397,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
           : "Untitled analysis";
       const { data: row } = await supa
         .from("analyses")
-        .insert({ user_id: user.id, title, mode, blueprint })
+        .insert({ user_id: uid, title, mode, blueprint })
         .select("id")
         .single();
       analysisId = (row?.id as string) ?? null;
@@ -1392,7 +1425,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
             // Storyboard frames → R2 (json blob) for reopening.
             if (frames.length) {
               try {
-                const framesKey = `${user.id}/frames/${analysisId}.json`;
+                const framesKey = `${uid}/frames/${analysisId}.json`;
                 if (await r2Put(framesKey, Buffer.from(JSON.stringify(frames)), "application/json")) {
                   media.frames_key = framesKey;
                 } else {
@@ -1416,7 +1449,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
                   "-movflags", "+faststart", "-an", outPath,
                 ]);
                 const small = await readFile(outPath);
-                const clipKeyFinal = `${user.id}/clips/${analysisId}.mp4`;
+                const clipKeyFinal = `${uid}/clips/${analysisId}.mp4`;
                 if (await r2Put(clipKeyFinal, small, "video/mp4")) {
                   media.clip_key = clipKeyFinal;
                 } else {
@@ -1452,9 +1485,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     });
   } catch (err) {
     // The run failed after we charged a credit — give it back (best effort).
-    if (charged && supa) {
-      try { await supa.rpc("refund_credit", { p_amount: creditCost }); } catch { /* ignore */ }
-    }
+    if (charged) await refund();
     const raw = err instanceof Error ? err.message : "Unknown error";
     // Never leak the underlying provider in user-facing errors — the engine is "MotionLens".
     const clean = raw.replace(/google generative ai|googleapis?|google[- ]?genai|gemini|google/gi, "the engine");
