@@ -24,6 +24,7 @@ export type ShowcaseBlueprint = {
   motion?: ShowcaseMotion[];
   feel?: string[];
   blind_spots?: string[];
+  agent_prompt?: string;
 };
 
 export type Showcase = {
@@ -33,6 +34,7 @@ export type Showcase = {
   mode: string;
   pattern_tags: string[];
   blueprint: ShowcaseBlueprint;
+  code: Record<string, string>;
   created_at: string;
   clipUrl: string | null;
   framesUrl: string | null;
@@ -51,7 +53,7 @@ const MEDIA_TTL = 7200; // s — must outlive the page's ISR window
 export async function listShowcases(): Promise<Showcase[]> {
   const { data } = await admin()
     .from("analyses")
-    .select("id, slug, title, mode, pattern_tags, blueprint, created_at, clip_key, frames_key")
+    .select("id, slug, title, mode, pattern_tags, blueprint, code, created_at, clip_key, frames_key")
     .eq("public", true)
     .not("slug", "is", null)
     .order("created_at", { ascending: false });
@@ -61,7 +63,7 @@ export async function listShowcases(): Promise<Showcase[]> {
 export async function getShowcase(slug: string): Promise<Showcase | null> {
   const { data } = await admin()
     .from("analyses")
-    .select("id, slug, title, mode, pattern_tags, blueprint, created_at, clip_key, frames_key")
+    .select("id, slug, title, mode, pattern_tags, blueprint, code, created_at, clip_key, frames_key")
     .eq("public", true)
     .eq("slug", slug)
     .maybeSingle();
@@ -94,6 +96,7 @@ async function toShowcase(row: any): Promise<Showcase> {
     mode: row.mode,
     pattern_tags: row.pattern_tags ?? [],
     blueprint: (row.blueprint ?? {}) as ShowcaseBlueprint,
+    code: (row.code && typeof row.code === "object" ? row.code : {}) as Record<string, string>,
     created_at: row.created_at,
     clipUrl,
     framesUrl,
