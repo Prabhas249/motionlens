@@ -8,9 +8,9 @@ import { MotionLensLogo } from "@marketing/components/motionlens-logo";
 
 // Real precision-analysis example (Grok mobile launch) — mirrors the product output.
 const FRAMES = [
-    { src: "/storyboard/frame-1.png", label: "Logo on splash" },
-    { src: "/storyboard/frame-2.png", label: "Keyboard + input slide up" },
-    { src: "/storyboard/frame-3.png", label: "Final state" },
+    { src: "/storyboard/frame-1.webp", label: "Logo on splash" },
+    { src: "/storyboard/frame-2.webp", label: "Keyboard + input slide up" },
+    { src: "/storyboard/frame-3.webp", label: "Final state" },
 ];
 
 const MOTIONS = [
