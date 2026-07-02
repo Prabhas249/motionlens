@@ -5,7 +5,7 @@ import { userIdFromApiKey, adminClient } from "@/lib/api-key";
 import { r2GetBytes, r2Put, r2Delete } from "@/lib/r2";
 import { FFMPEG } from "@/lib/ffmpeg";
 import sharp from "sharp";
-import { writeFile, readFile, unlink, readdir } from "node:fs/promises";
+import { writeFile, readFile, unlink, readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -848,6 +848,10 @@ async function grabFile(videoPath: string, t: number, out: string): Promise<stri
       "-ss", Math.max(0, t).toFixed(2), "-i", videoPath, "-frames:v", "1",
       "-vf", "scale='min(1080,iw)':-2", "-q:v", "2", "-y", out,
     ]);
+    // Seeking at/past the end of the clip writes ZERO frames but still exits 0
+    // — verify the frame actually exists before reporting success, or callers
+    // ENOENT on a path that was never written.
+    await stat(out);
     return out;
   } catch {
     return null;
@@ -1319,14 +1323,25 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
       const kept: { t: number; path: string }[] = [];
       for (let i = 0; i < grabbed.length; i++) if (grabbed[i]) kept.push({ t: times[i], path: grabbed[i]! });
       if (kept.length) {
-        keyframeParts = await Promise.all(
-          kept.map(async (k) => ({
-            inlineData: { mimeType: "image/jpeg", data: (await readFile(k.path)).toString("base64") },
-          })),
+        // A frame that can't be read is DROPPED, never fatal — keyframes are an
+        // enhancement; losing one must not kill a run the user already paid for.
+        const loaded = await Promise.all(
+          kept.map(async (k) => {
+            try {
+              return {
+                t: k.t,
+                part: { inlineData: { mimeType: "image/jpeg", data: (await readFile(k.path)).toString("base64") } },
+              };
+            } catch {
+              return null;
+            }
+          }),
         );
+        const good = loaded.filter((g): g is NonNullable<typeof g> => g !== null);
+        keyframeParts = good.map((g) => g.part);
         for (const k of kept) await unlink(k.path).catch(() => {}); // base64 captured; files no longer needed
-        const stamps = kept.map((k) => `${k.t.toFixed(2)}s`).join(", ");
-        keyframeContext = `\n\nSHARP KEYFRAMES PROVIDED — ${kept.length} high-resolution stills are attached (after the video), captured at the key motion moments (${stamps}). They are sharper than the compressed video frames. USE THEM to read SMALL or LOW-CONTRAST elements the video blurs (e.g. a pale shape on a light background), the EXACT intermediate states (e.g. a mid-burst pile BEFORE it scatters), and precise colors / sizes / positions / spacing. The VIDEO stays the source of truth for MOTION, ORDER and TIMING; these keyframes are the source of truth for APPEARANCE at those instants — when the blurry video and a sharp keyframe disagree on appearance, trust the keyframe. The stills are in chronological order.`;
+        const stamps = good.map((g) => `${g.t.toFixed(2)}s`).join(", ");
+        if (good.length) keyframeContext = `\n\nSHARP KEYFRAMES PROVIDED — ${good.length} high-resolution stills are attached (after the video), captured at the key motion moments (${stamps}). They are sharper than the compressed video frames. USE THEM to read SMALL or LOW-CONTRAST elements the video blurs (e.g. a pale shape on a light background), the EXACT intermediate states (e.g. a mid-burst pile BEFORE it scatters), and precise colors / sizes / positions / spacing. The VIDEO stays the source of truth for MOTION, ORDER and TIMING; these keyframes are the source of truth for APPEARANCE at those instants — when the blurry video and a sharp keyframe disagree on appearance, trust the keyframe. The stills are in chronological order.`;
       }
     }
 
