@@ -143,16 +143,18 @@ function BlueprintCard() {
 // crossfade via keyframes — no hydration dependency and no element swap, so
 // the h1 paints once and LCP stays at first paint (the JS-swap version kept
 // re-triggering Chrome's LCP entry ~10s in).
-const HERO_WORDS = ["motion", "animations", "interactions", "transitions"];
+// Longest word FIRST + zero crossfade overlap: the h1's painted area is
+// maximal at first paint, so no later word can register a larger LCP entry
+// (a longer word fading in mid-trace kept re-triggering Chrome's LCP).
+const HERO_WORDS = ["interactions", "transitions", "animations", "motion"];
 
 function RotatingWord() {
     return (
         <span className="relative inline-grid justify-items-center align-bottom text-[#2A48F0]">
             <style>{`
                 @keyframes heroWordCycle {
-                    0%, 21% { opacity: 1; filter: blur(0); transform: translateY(0); }
-                    25%, 96% { opacity: 0; filter: blur(6px); transform: translateY(4px); }
-                    100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+                    0%, 20% { opacity: 1; filter: blur(0); transform: translateY(0); }
+                    24%, 100% { opacity: 0; filter: blur(6px); transform: translateY(4px); }
                 }
                 @media (prefers-reduced-motion: reduce) {
                     .hero-word { animation: none !important; }
