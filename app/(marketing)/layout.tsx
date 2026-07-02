@@ -37,10 +37,39 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: siteConfig.name,
-    template: `%s - ${siteConfig.name}`,
+    default: "MotionLens — Turn UI animations into AI-ready Motion Blueprints",
+    template: `%s · ${siteConfig.name}`,
   },
-  description: siteConfig.description,
+  description:
+    "MotionLens watches any UI animation — a screen recording or a live website — and hands your AI coding agent an exact Motion Blueprint: timings, easing, choreography, and ready-to-paste Framer Motion, CSS, and GSAP code. Works in Claude Code and Cursor via MCP.",
+  keywords: [
+    "UI animation analysis",
+    "motion design spec",
+    "AI coding agent",
+    "Framer Motion code from video",
+    "animation to code",
+    "MCP server",
+    "Claude Code",
+    "Cursor",
+    "micro-interactions",
+    "motion blueprint",
+  ],
+  alternates: { canonical: "./" },
+  openGraph: {
+    type: "website",
+    siteName: siteConfig.name,
+    url: siteConfig.url,
+    title: "MotionLens — Give your AI agent eyes for motion",
+    description:
+      "Any UI animation → an exact Motion Blueprint your AI agent can build from: timings, easing, choreography, and ready-to-paste code.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MotionLens — Give your AI agent eyes for motion",
+    description:
+      "Any UI animation → an exact Motion Blueprint your AI agent can build from: timings, easing, choreography, and ready-to-paste code.",
+  },
+  robots: { index: true, follow: true },
 };
 
 // Marketing/landing surface. Its globals + Geist fonts + Navbar only load on
