@@ -147,6 +147,14 @@ export function HeroSection() {
     // pixels, so the h1 never repaints larger and LCP stays at first paint.
     const [hydrated, setHydrated] = useState(false);
     useEffect(() => setHydrated(true), []);
+    // WebGL shader waits for idle — it's decoration, not content; its init was
+    // sharing the main thread with hydration and pushing LCP out.
+    const [showShader, setShowShader] = useState(false);
+    useEffect(() => {
+        const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+        const idle = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 350));
+        idle(() => setShowShader(true));
+    }, []);
 
     return (
         <section
@@ -159,7 +167,7 @@ export function HeroSection() {
                     at top/bottom). ONLY the area under the cursor burns dense/bright. z-0 so the
                     canvas gets the cursor; text/button stay above at z-10. */}
                 <div className="absolute left-1/2 top-0 z-0 h-full w-screen -translate-x-1/2 opacity-[0.4] [mask-image:linear-gradient(to_bottom,transparent,#000_12%,#000_88%,transparent)]">
-                    <PixelGridShader
+                    {showShader && <PixelGridShader
                         shape="plasma"
                         colorFg="#3D5CFF"
                         pxSize={5}
@@ -170,7 +178,7 @@ export function HeroSection() {
                         cursorMode="burn"
                         cursorSize={0.4}
                         cursorScale={0.3}
-                    />
+                    />}
                 </div>
 
                 <div className="relative z-10 flex w-full max-w-3xl flex-col items-center space-y-6 text-center">
@@ -191,7 +199,10 @@ export function HeroSection() {
                             duration={1.3}
                         />
                     ) : (
-                        <span style={{ color: "#2A48F0" }}>motion</span>
+                        <span
+                            className="inline-block align-bottom leading-[100%]"
+                            style={{ color: "#2A48F0", transform: "translateY(-2px)" }}
+                        >motion</span>
                     )}
                 </h1>
                 <p className="mx-auto max-w-xl text-balance text-center text-lg text-muted-foreground">
