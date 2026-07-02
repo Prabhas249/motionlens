@@ -43,7 +43,7 @@ export function CopilotChat({ blueprint }: { blueprint?: unknown }) {
                 )}
               >
                 {m.parts.map((p, i) =>
-                  p.type === "text" ? <span key={i}>{p.text}</span> : null,
+                  p.type === "text" ? <span key={`${m.id}-${i}`}>{p.text}</span> : null,
                 )}
               </div>
             </div>

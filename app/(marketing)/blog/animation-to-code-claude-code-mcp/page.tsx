@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Section } from "@marketing/components/page-shell";
 import { PostShell, Code } from "@marketing/components/post-shell";
 import { POSTS } from "@marketing/lib/posts";
@@ -32,7 +33,7 @@ export default function Page() {
       <Section title="Setup (two minutes)">
         <p>
           1. Sign in at{" "}
-          <a href="/login" className="font-medium text-[#2A48F0] hover:underline">motionlens.dev</a>{" "}
+          <Link href="/login" className="font-medium text-[#2A48F0] hover:underline">motionlens.dev</Link>{" "}
           (5 free credits, no card) → open <strong className="text-foreground">MCP</strong> in the
           sidebar → create an API key.
         </p>

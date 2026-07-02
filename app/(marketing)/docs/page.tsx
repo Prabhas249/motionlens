@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageShell, Section } from "@marketing/components/page-shell";
 
 export const metadata: Metadata = {
@@ -97,9 +98,9 @@ export default function DocsPage() {
                     and{" "}
                     <code className="rounded bg-muted px-1.5 py-0.5 text-[13px]">analyze_url</code>.
                     See the{" "}
-                    <a href="/api-reference" className="font-medium text-[#2A48F0] hover:underline">
+                    <Link href="/api-reference" className="font-medium text-[#2A48F0] hover:underline">
                         API Reference
-                    </a>{" "}
+                    </Link>{" "}
                     for parameters and response shapes.
                 </p>
             </Section>
@@ -109,9 +110,9 @@ export default function DocsPage() {
                     Analyses cost credits by mode (Standard 2 · Precision 3). Free includes 5 credits, Pro is
                     $9/mo for 150, Studio is $19/mo for 300. Refunds are automatic if an analysis
                     fails. See{" "}
-                    <a href="/#pricing" className="font-medium text-[#2A48F0] hover:underline">
+                    <Link href="/#pricing" className="font-medium text-[#2A48F0] hover:underline">
                         pricing
-                    </a>{" "}
+                    </Link>{" "}
                     for the full breakdown.
                 </p>
             </Section>

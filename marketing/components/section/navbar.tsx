@@ -133,7 +133,7 @@ export function Navbar() {
                                 />
                             </div>
                             <ThemeToggle />
-                            <button
+                            <button type="button"
                                 className="flex size-8 cursor-pointer items-center justify-center rounded-md border border-border md:hidden"
                                 onClick={toggleDrawer}
                                 aria-label="Toggle menu"
@@ -173,7 +173,7 @@ export function Navbar() {
                             <div className="flex flex-col gap-4">
                                 <div className="flex items-center justify-between">
                                     <BrandLockup />
-                                    <button
+                                    <button type="button"
                                         onClick={toggleDrawer}
                                         className="cursor-pointer rounded-md border border-border p-1"
                                         aria-label="Close menu"

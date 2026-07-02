@@ -32,7 +32,7 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarContent className="overflow-hidden">
 				{navGroups.map((group, index) => (
-					<NavGroup key={`sidebar-group-${index}`} {...group} />
+					<NavGroup {...group} key={`sidebar-group-${index}`} />
 				))}
 				<NavHistory />
 			</SidebarContent>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Section } from "@marketing/components/page-shell";
 import { PostShell, Code } from "@marketing/components/post-shell";
 import { POSTS } from "@marketing/lib/posts";
@@ -90,7 +91,7 @@ export default function Page() {
         <p>
           MotionLens recorded the page headlessly with real frame timing, watched it, and returned the
           blueprint — motions, timings, easing, and an agent-ready prompt.{" "}
-          <a href="/login" className="font-medium text-[#2A48F0] hover:underline">Try it on any site</a> —
+          <Link href="/login" className="font-medium text-[#2A48F0] hover:underline">Try it on any site</Link> —
           new accounts get 5 free credits, no card.
         </p>
       </Section>

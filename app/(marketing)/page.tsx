@@ -1,14 +1,19 @@
-import { LazyDither } from "@marketing/components/animations/lazy-dither";
-import { ExamplesSection } from "@marketing/components/section/examples-section";
-import { ConnectSection } from "@marketing/components/section/connection-section";
-import { CTASection } from "@marketing/components/section/cta-section";
-import { FAQSection } from "@marketing/components/section/faq-section";
-import { FeatureSection } from "@marketing/components/section/feature-section";
-import { Footer } from "@marketing/components/section/footer";
+import dynamic from "next/dynamic";
 import { HeroSection } from "@marketing/components/section/hero-section";
-import { PricingSection } from "@marketing/components/section/pricing-section";
-import { WorkflowConnectSection } from "@marketing/components/section/workflow-connect-section";
-import { HowItWorksSection } from "@marketing/components/section/how-it-works-section";
+
+// Everything below the fold is code-split so the hero (the LCP element)
+// hydrates first instead of waiting for the whole landing bundle. SSR stays
+// on — crawlers still get full HTML; only the client JS is deferred.
+const ExamplesSection = dynamic(() => import("@marketing/components/section/examples-section").then(m => m.ExamplesSection));
+const ConnectSection = dynamic(() => import("@marketing/components/section/connection-section").then(m => m.ConnectSection));
+const CTASection = dynamic(() => import("@marketing/components/section/cta-section").then(m => m.CTASection));
+const FAQSection = dynamic(() => import("@marketing/components/section/faq-section").then(m => m.FAQSection));
+const FeatureSection = dynamic(() => import("@marketing/components/section/feature-section").then(m => m.FeatureSection));
+const Footer = dynamic(() => import("@marketing/components/section/footer").then(m => m.Footer));
+const PricingSection = dynamic(() => import("@marketing/components/section/pricing-section").then(m => m.PricingSection));
+const WorkflowConnectSection = dynamic(() => import("@marketing/components/section/workflow-connect-section").then(m => m.WorkflowConnectSection));
+const HowItWorksSection = dynamic(() => import("@marketing/components/section/how-it-works-section").then(m => m.HowItWorksSection));
+const LazyDither = dynamic(() => import("@marketing/components/animations/lazy-dither").then(m => m.LazyDither));
 
 // Structured data: lets Google show MotionLens as a software product with
 // real prices instead of a bare link.

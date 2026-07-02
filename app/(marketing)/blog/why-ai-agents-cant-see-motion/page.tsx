@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Section } from "@marketing/components/page-shell";
 import { PostShell, Code } from "@marketing/components/post-shell";
 import { POSTS } from "@marketing/lib/posts";
@@ -95,9 +96,9 @@ export default function Page() {
 }`}</Code>
         <p>
           Words lose motion. Specs carry it.{" "}
-          <a href="/login" className="font-medium text-[#2A48F0] hover:underline">
+          <Link href="/login" className="font-medium text-[#2A48F0] hover:underline">
             Give your agent eyes
-          </a>{" "}
+          </Link>{" "}
           — 5 free credits, no card.
         </p>
       </Section>

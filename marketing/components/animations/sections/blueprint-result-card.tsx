@@ -145,7 +145,7 @@ export function BlueprintResultCard({ className }: { className?: string }) {
                     className="mt-4 flex items-center gap-1 rounded-lg border border-border bg-background/50 p-1"
                 >
                     {TABS.map((t) => (
-                        <button
+                        <button type="button"
                             key={t}
                             onClick={() => setTab(t)}
                             className={cn(
@@ -161,9 +161,9 @@ export function BlueprintResultCard({ className }: { className?: string }) {
                 <motion.div variants={item} className="mt-3 min-h-[200px] max-h-[260px] overflow-y-auto">
                     <AnimatePresence mode="wait">
                         {tab === "storyboard" && (
-                            <motion.div key="sb" {...swap} className="flex gap-3 overflow-x-auto pb-1">
+                            <motion.div {...swap} key="sb" className="flex gap-3 overflow-x-auto pb-1">
                                 {FRAMES.map((f) => (
-                                    <button
+                                    <button type="button"
                                         key={f.src}
                                         onClick={() => setLightbox(f.src)}
                                         className="group w-[150px] shrink-0 text-left"
@@ -180,7 +180,7 @@ export function BlueprintResultCard({ className }: { className?: string }) {
                             </motion.div>
                         )}
                         {tab === "motion" && (
-                            <motion.div key="mo" {...swap} className="space-y-2">
+                            <motion.div {...swap} key="mo" className="space-y-2">
                                 {MOTIONS.map((m) => (
                                     <div key={m.el + m.cls} className="rounded-lg border border-border bg-background/50 p-2.5">
                                         <div className="flex items-center gap-2">
@@ -195,10 +195,10 @@ export function BlueprintResultCard({ className }: { className?: string }) {
                             </motion.div>
                         )}
                         {tab === "code" && (
-                            <motion.div key="cd" {...swap}>
+                            <motion.div {...swap} key="cd">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     {Object.keys(CODE).map((f) => (
-                                        <button
+                                        <button type="button"
                                             key={f}
                                             onClick={() => setFw(f)}
                                             className={cn(
@@ -253,14 +253,14 @@ export function BlueprintResultCard({ className }: { className?: string }) {
                                 className="max-h-[85vh] w-auto rounded-xl border border-white/10 bg-white shadow-2xl"
                             />
                             <div className="absolute right-3 top-3 flex gap-2">
-                                <button
+                                <button type="button"
                                     onClick={() => copyImage(lightbox)}
                                     className="flex items-center gap-1.5 rounded-lg bg-white/90 px-2.5 py-1.5 text-xs font-medium text-neutral-900 transition hover:bg-white"
                                 >
                                     {imgCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                                     {imgCopied ? "Copied" : "Copy image"}
                                 </button>
-                                <button
+                                <button type="button"
                                     onClick={() => setLightbox(null)}
                                     className="flex size-8 items-center justify-center rounded-lg bg-white/90 text-neutral-900 transition hover:bg-white"
                                     aria-label="Close"

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageShell, Section } from "@marketing/components/page-shell";
 
 export const metadata: Metadata = {
@@ -116,9 +117,9 @@ export default function ApiReferencePage() {
                     The full Motion Blueprint (trigger, timeline, per-element motion, easing,
                     stagger, feel, agent prompt) is written to <code>blueprint_path</code> so
                     nothing truncates. See the{" "}
-                    <a href="/docs" className="font-medium text-[#2A48F0] hover:underline">
+                    <Link href="/docs" className="font-medium text-[#2A48F0] hover:underline">
                         Documentation
-                    </a>{" "}
+                    </Link>{" "}
                     for the Blueprint schema.
                 </p>
             </Section>

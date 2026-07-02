@@ -330,7 +330,7 @@ export function BlueprintView({
             <Section title="Animation flow">
               <ol className="space-y-1.5">
                 {bp.beats.map((b, i) => (
-                  <li key={i} className="flex gap-2 text-sm">
+                  <li key={`${i}-${b.slice(0, 24)}`} className="flex gap-2 text-sm">
                     <span className="text-muted-foreground tabular-nums">{i + 1}.</span>
                     <span>{b}</span>
                   </li>
@@ -380,8 +380,8 @@ export function BlueprintView({
           {bp.feel && bp.feel.length > 0 && (
             <Section title="Feel">
               <div className="flex flex-wrap gap-2">
-                {bp.feel.map((f, i) => (
-                  <span key={i} className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+                {bp.feel.map((f) => (
+                  <span key={f} className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
                     {f}
                   </span>
                 ))}
@@ -392,8 +392,8 @@ export function BlueprintView({
           {bp.blind_spots && bp.blind_spots.length > 0 && (
             <Section title="Blind spots">
               <ul className="space-y-1">
-                {bp.blind_spots.map((b, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-muted-foreground">
+                {bp.blind_spots.map((b) => (
+                  <li key={b} className="flex gap-2 text-sm text-muted-foreground">
                     <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-amber-400" />
                     <span>{b}</span>
                   </li>
