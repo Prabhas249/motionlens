@@ -1,0 +1,28 @@
+# MotionLens
+
+> MotionLens turns any UI animation — a screen recording or a live website — into an AI-ready "Motion Blueprint": a structured spec of every animated element with timings in ms, easing, choreography/stagger, feel tags, and an agent-ready prompt. AI coding agents (Claude Code, Cursor, Windsurf, any MCP client) use it to implement animations correctly on the first try, and it exports ready-to-paste Framer Motion, CSS, GSAP, and Tailwind code.
+
+Key facts:
+- Product: https://motionlens.dev (sign in with Google, 5 free credits, no card)
+- Modes: Standard (2 credits — blueprint + annotated storyboard, clips ≤30s) and Precision (3 credits — multi-pass verification, clips ≤10s). Failed runs auto-refund. Code export is free.
+- Pricing: Free $0 (5 credits) · Pro $9/mo (150 credits) · Studio $19/mo (300 credits)
+- MCP server (hosted, nothing to install): https://motionlens.dev/api/mcp — streamable HTTP, Bearer API key auth. Install: `claude mcp add --transport http motionlens https://motionlens.dev/api/mcp --header "Authorization: Bearer YOUR_API_KEY"`
+- MCP tools: analyze_url (records a live website headlessly with real frame timing; auto-playing motion only), analyze_clip (direct mp4/mov/webm URL), get_analysis, list_analyses (free reads)
+- Engine honesty: blueprints declare "blind spots" (e.g. exact spring constants) instead of hallucinating values; per-motion confidence flags inferred details.
+
+## Docs
+
+- [Documentation](https://motionlens.dev/docs): quickstart, analysis modes, credits and plans
+- [API Reference](https://motionlens.dev/api-reference): parameters and response shapes
+- [MCP setup](https://motionlens.dev/mcp): API keys and editor configuration (sign-in required)
+
+## Blog
+
+- [Teardown: feather.computer's radial sticker explosion](https://motionlens.dev/blog/feather-computer-hero-animation-teardown)
+- [Turn any UI animation into Framer Motion code with Claude Code](https://motionlens.dev/blog/animation-to-code-claude-code-mcp)
+- [Why AI coding agents can't see motion](https://motionlens.dev/blog/why-ai-agents-cant-see-motion)
+
+## Legal
+
+- [Terms](https://motionlens.dev/terms)
+- [Privacy](https://motionlens.dev/privacy)

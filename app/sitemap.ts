@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { POSTS } from "@marketing/lib/posts";
 
 const BASE = "https://motionlens.dev";
 
@@ -20,10 +21,18 @@ const ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.S
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return ROUTES.map((r) => ({
-    url: `${BASE}${r.path}`,
-    lastModified: new Date(),
-    changeFrequency: r.changeFrequency,
-    priority: r.priority,
-  }));
+  return [
+    ...ROUTES.map((r) => ({
+      url: `${BASE}${r.path}`,
+      lastModified: new Date(),
+      changeFrequency: r.changeFrequency,
+      priority: r.priority,
+    })),
+    ...POSTS.map((p) => ({
+      url: `${BASE}/blog/${p.slug}`,
+      lastModified: new Date(p.date),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
 }
