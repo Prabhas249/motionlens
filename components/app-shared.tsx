@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LayoutGridIcon, SettingsIcon, CreditCardIcon } from "lucide-react";
+import { LayoutGridIcon, SettingsIcon, CreditCardIcon, TerminalIcon } from "lucide-react";
 
 export type SidebarNavItem = {
 	title: string;
@@ -22,6 +22,11 @@ export const navGroups: SidebarNavGroup[] = [
 				title: "Dashboard",
 				path: "/dashboard",
 				icon: <LayoutGridIcon />,
+			},
+			{
+				title: "MCP",
+				path: "/mcp",
+				icon: <TerminalIcon />,
 			},
 		],
 	},

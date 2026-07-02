@@ -12,7 +12,6 @@ import {
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { footerNavLinks, navGroups } from "@/components/app-shared";
-import { LatestChange } from "@/components/latest-change";
 import { NavGroup } from "@/components/nav-group";
 import { NavHistory } from "@/components/nav-history";
 
@@ -37,7 +36,6 @@ export function AppSidebar() {
 				<NavHistory />
 			</SidebarContent>
 			<SidebarFooter className="gap-0 p-0">
-				<LatestChange />
 				{footerNavLinks.length > 0 && (
 					<SidebarMenu className="border-t p-2">
 						{footerNavLinks.map((item) => (

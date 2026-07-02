@@ -74,14 +74,14 @@ export function AuthPage() {
 						By clicking continue, you agree to our{" "}
 						<a
 							className="underline underline-offset-4 hover:text-primary"
-							href="#"
+							href="/terms"
 						>
 							Terms of Service
 						</a>{" "}
 						and{" "}
 						<a
 							className="underline underline-offset-4 hover:text-primary"
-							href="#"
+							href="/privacy"
 						>
 							Privacy Policy
 						</a>

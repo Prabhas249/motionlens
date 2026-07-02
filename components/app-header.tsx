@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DecorIcon } from "@/components/decor-icon";
 import { HeaderBreadcrumb } from "@/components/header-breadcrumb";
@@ -7,7 +6,6 @@ import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
 import { NavUser } from "@/components/nav-user";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CreditsBadge } from "@/components/credits-badge";
-import { SendIcon, BellIcon } from "lucide-react";
 
 export function AppHeader() {
 	return (
@@ -29,14 +27,6 @@ export function AppHeader() {
 			<div className="flex items-center gap-3">
 				<CreditsBadge />
 				<ThemeToggle />
-				<Button size="icon-sm" variant="outline">
-					<SendIcon
-					/>
-				</Button>
-				<Button aria-label="Notifications" size="icon-sm" variant="outline">
-					<BellIcon
-					/>
-				</Button>
 				<Separator
 					className="h-4 data-[orientation=vertical]:self-center"
 					orientation="vertical"
