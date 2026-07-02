@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { userIdFromApiKey, adminClient } from "@/lib/api-key";
 import { r2Put } from "@/lib/r2";
+import { recordUrl } from "@/lib/record-url";
 
 export const runtime = "nodejs";
 // analyze_clip proxies a full analysis run (up to ~3min on precision).
@@ -34,6 +35,56 @@ const text = (value: unknown) => ({
   content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }],
 });
 
+// Shared back half of both analyze tools: stage the clip bytes in R2 under the
+// caller's prefix, run the real pipeline via /api/analyze (API-key auth), and
+// read the blueprint off the NDJSON stream.
+async function stageAndAnalyze(
+  auth: Auth,
+  buf: Buffer,
+  ext: string,
+  ctype: string,
+  mode: string | undefined,
+  context: string | undefined,
+) {
+  const clipKey = `${auth.userId}/mcp/${crypto.randomUUID()}.${ext}`;
+  if (!(await r2Put(clipKey, buf, ctype))) {
+    return text("Couldn't stage the clip — please try again.");
+  }
+  const form = new FormData();
+  form.set("clipKey", clipKey);
+  form.set("mode", mode || "standard"); // the API maps non-precision to the standard (annotated) pipeline
+  if (context?.trim()) form.set("context", context.trim());
+  const res = await fetch(`${auth.origin}/api/analyze`, {
+    method: "POST",
+    headers: { "x-api-key": auth.token },
+    body: form,
+  });
+  if (!res.ok) {
+    let msg = `Analysis failed (HTTP ${res.status}).`;
+    try { msg = ((await res.json()) as { error?: string }).error || msg; } catch { /* keep default */ }
+    return text(msg);
+  }
+  const ndjson = await res.text();
+  let blueprint: unknown = null;
+  let analysisId: string | null = null;
+  for (const line of ndjson.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const msg = JSON.parse(line);
+      if (msg.type === "blueprint") {
+        blueprint = msg.blueprint;
+        analysisId = typeof msg.analysisId === "string" ? msg.analysisId : null;
+      }
+    } catch { /* skip partial lines */ }
+  }
+  if (!blueprint) return text("The engine returned no blueprint — please try again.");
+  return text({
+    analysis_id: analysisId,
+    open_in_dashboard: analysisId ? `https://motionlens.dev/dashboard?a=${analysisId}` : undefined,
+    blueprint,
+  });
+}
+
 const handler = createMcpHandler(
   (server) => {
     server.tool(
@@ -47,10 +98,10 @@ const handler = createMcpHandler(
           .describe("Optional focus, e.g. 'focus on the card hover, ignore the cursor'."),
       },
       async ({ video_url, mode, context }, extra) => {
-        const { userId, origin, token } = authOf(extra);
-        if (!userId) return text("Not authorized.");
+        const auth = authOf(extra);
+        if (!auth.userId) return text("Not authorized.");
 
-        // 1) Pull the clip server-side (the user's agent only has a URL).
+        // Pull the clip server-side (the user's agent only has a URL).
         let clip: Response;
         try {
           clip = await fetch(video_url, { redirect: "follow" });
@@ -65,48 +116,34 @@ const handler = createMcpHandler(
         const ext =
           EXT_BY_TYPE[ctype] ||
           (video_url.match(/\.(mp4|mov|webm|m4v)(\?|$)/i)?.[1] || "mp4").toLowerCase();
+        return stageAndAnalyze(auth, buf, ext, ctype || "video/mp4", mode, context);
+      },
+    );
 
-        // 2) Stage it in R2 under the caller's prefix (same path the web app uses;
-        //    /api/analyze deletes the raw upload when the run finishes).
-        const clipKey = `${userId}/mcp/${crypto.randomUUID()}.${ext}`;
-        if (!(await r2Put(clipKey, buf, ctype || "video/mp4"))) {
-          return text("Couldn't stage the clip — please try again.");
+    server.tool(
+      "analyze_url",
+      "Record a live website/app at an https URL with a headless browser (1440×900, real frame timing) and analyze its animation into a Motion Blueprint. Best for AUTO-PLAYING motion: page-load choreography, hero entrances, marquees, carousels, loaders. There is no cursor — hover/click/scroll-driven interactions will NOT appear; record those manually and use analyze_clip. Spends credits like any analysis (standard 2 / precision 3). Takes 1–3 minutes.",
+      {
+        url: z.string().url().describe("The page to record, e.g. https://feather.computer."),
+        seconds: z.number().int().min(3).max(30).optional()
+          .describe("How long to record (default 10; capped at 10 in precision mode, 30 in standard)."),
+        mode: z.enum(["standard", "precision"]).optional()
+          .describe("standard = blueprint + storyboard (default) · precision = deepest multi-pass"),
+        context: z.string().max(500).optional()
+          .describe("Optional focus, e.g. 'focus on the hero cards, ignore the nav'."),
+      },
+      async ({ url, seconds, mode, context }, extra) => {
+        const auth = authOf(extra);
+        if (!auth.userId) return text("Not authorized.");
+        const capS = mode === "precision" ? 10 : 30;
+        const recS = Math.min(seconds || 10, capS);
+        let buf: Buffer;
+        try {
+          buf = await recordUrl(url, recS);
+        } catch (e) {
+          return text(`Couldn't record ${url} — ${e instanceof Error ? e.message : "the page failed to load."}`);
         }
-
-        // 3) Run the real pipeline via the API (API-key auth) and read the NDJSON stream.
-        const form = new FormData();
-        form.set("clipKey", clipKey);
-        form.set("mode", mode || "standard"); // the API maps non-precision to the standard (annotated) pipeline
-        if (context?.trim()) form.set("context", context.trim());
-        const res = await fetch(`${origin}/api/analyze`, {
-          method: "POST",
-          headers: { "x-api-key": token },
-          body: form,
-        });
-        if (!res.ok) {
-          let msg = `Analysis failed (HTTP ${res.status}).`;
-          try { msg = ((await res.json()) as { error?: string }).error || msg; } catch { /* keep default */ }
-          return text(msg);
-        }
-        const ndjson = await res.text();
-        let blueprint: unknown = null;
-        let analysisId: string | null = null;
-        for (const line of ndjson.split("\n")) {
-          if (!line.trim()) continue;
-          try {
-            const msg = JSON.parse(line);
-            if (msg.type === "blueprint") {
-              blueprint = msg.blueprint;
-              analysisId = typeof msg.analysisId === "string" ? msg.analysisId : null;
-            }
-          } catch { /* skip partial lines */ }
-        }
-        if (!blueprint) return text("The engine returned no blueprint — please try again.");
-        return text({
-          analysis_id: analysisId,
-          open_in_dashboard: analysisId ? `https://motionlens.dev/dashboard?a=${analysisId}` : undefined,
-          blueprint,
-        });
+        return stageAndAnalyze(auth, buf, "mp4", "video/mp4", mode, context);
       },
     );
 

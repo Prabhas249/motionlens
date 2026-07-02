@@ -26,6 +26,11 @@ const MCP_URL = "https://motionlens.dev/api/mcp";
 
 const TOOLS = [
   {
+    name: "analyze_url",
+    what: "Live website URL → recorded headless (real frame timing) → Motion Blueprint. Auto-playing motion only — no cursor.",
+    cost: "2–3 credits",
+  },
+  {
     name: "analyze_clip",
     what: "Direct video URL → full Motion Blueprint, saved to your History",
     cost: "2–3 credits",
@@ -299,6 +304,7 @@ export function McpView() {
             </div>
             <div className="space-y-2 p-4">
               {[
+                "analyze the first 10 seconds of https://feather.computer with MotionLens in precision mode",
                 "analyze https://cdn.example.com/hero.mp4 with MotionLens and recreate it in Framer Motion",
                 "list my MotionLens analyses and pull the blueprint of the latest one",
               ].map((q) => (
@@ -357,6 +363,11 @@ export function McpView() {
               <li>
                 <b className="text-foreground">Clip caps:</b> ≤30s Standard, ≤10s
                 Precision, ≤80MB, direct file URL (mp4 · mov · webm).
+              </li>
+              <li>
+                <b className="text-foreground">URL recording:</b> analyze_url captures
+                auto-playing motion (load choreography, marquees, loops) at 1440×900.
+                Hover/click interactions need a manual recording + analyze_clip.
               </li>
               <li>
                 <b className="text-foreground">History:</b> MCP runs land in your sidebar History —
