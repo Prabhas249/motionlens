@@ -1183,7 +1183,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     if (durS > capS + 1.5) {
       if (charged) await refund();
       return Response.json(
-        { error: `${mode === "precision" ? "Precision" : "Annotated"} mode caps clips at ${capS}s — this one is ${Math.round(durS)}s. Trim it${mode === "precision" ? " or use Annotated" : ""} and try again.` },
+        { error: `${mode === "precision" ? "Precision" : "Standard"} mode caps clips at ${capS}s — this one is ${Math.round(durS)}s. Trim it${mode === "precision" ? " or use Standard" : ""} and try again.` },
         { status: 400 },
       );
     }

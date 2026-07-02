@@ -37,7 +37,7 @@ export default function DocsPage() {
                 <p>Each mode trades depth for credits — pick per clip:</p>
                 <ul className="ml-5 list-disc space-y-2">
                     <li>
-                        <strong className="text-foreground">Annotated</strong> (2 credits) — the
+                        <strong className="text-foreground">Standard</strong> (2 credits) — the
                         full Blueprint (summary, timeline, per-element motion) plus a captioned
                         storyboard of key frames so you (and multimodal agents) can see the
                         motion, not just read it. Best for most clips.
@@ -106,7 +106,7 @@ export default function DocsPage() {
 
             <Section title="Credits & plans">
                 <p>
-                    Analyses cost credits by mode (Annotated 2 · Precision 3). Free includes 5 credits, Pro is
+                    Analyses cost credits by mode (Standard 2 · Precision 3). Free includes 5 credits, Pro is
                     $9/mo for 150, Studio is $19/mo for 300. Refunds are automatic if an analysis
                     fails. See{" "}
                     <a href="/#pricing" className="font-medium text-[#2A48F0] hover:underline">

@@ -34,7 +34,7 @@ const PLANS: Plan[] = [
     features: [
       "150 credits / month",
       "≈ 150 standard or 50 precision analyses",
-      "Annotated · Precision modes",
+      "Standard · Precision modes",
       "Code export (Framer Motion, GSAP, CSS, Tailwind)",
       "Priority processing",
     ],

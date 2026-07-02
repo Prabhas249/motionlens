@@ -352,10 +352,10 @@ export function McpView() {
             <ul className="space-y-2 p-4 text-[11px] leading-relaxed text-muted-foreground">
               <li>
                 <b className="text-foreground">Credits:</b> analyze_clip charges the same as the
-                dashboard — Annotated 2 · Precision 3. Failed runs are refunded.
+                dashboard — Standard 2 · Precision 3. Failed runs are refunded.
               </li>
               <li>
-                <b className="text-foreground">Clip caps:</b> ≤30s Annotated, ≤10s
+                <b className="text-foreground">Clip caps:</b> ≤30s Standard, ≤10s
                 Precision, ≤80MB, direct file URL (mp4 · mov · webm).
               </li>
               <li>

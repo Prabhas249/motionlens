@@ -11,9 +11,10 @@ import { WaveSpinner } from "@/components/ui/wave-spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import type { Mode } from "@/components/blueprint-view";
 
-// Standard mode retired July 2 — Annotated (2cr) is the base mode now.
+// The base mode is the annotated pipeline (2cr) but is NAMED "Standard" —
+// the internal value stays "annotated" so old saved analyses keep rendering.
 const MODES: { value: Mode; label: string }[] = [
-  { value: "annotated", label: "Annotated" },
+  { value: "annotated", label: "Standard" },
   { value: "precision", label: "Precision" },
 ];
 
@@ -89,7 +90,7 @@ export function AnalysisInput({
     const cap = CAP_S[mode];
     if (dur !== null && dur > cap + 0.5) {
       setCapError(
-        `${MODES.find((m) => m.value === mode)?.label} caps clips at ${cap}s — this one is ${Math.round(dur)}s. Trim it${mode === "precision" ? " or switch to Annotated" : ""}.`,
+        `${MODES.find((m) => m.value === mode)?.label} caps clips at ${cap}s — this one is ${Math.round(dur)}s. Trim it${mode === "precision" ? " or switch to Standard" : ""}.`,
       );
       return;
     }

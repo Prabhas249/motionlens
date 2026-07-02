@@ -59,7 +59,7 @@ export default function ApiReferencePage() {
                         <code>CSS</code>, <code>GSAP</code>, or <code>Tailwind</code>.
                     </Param>
                     <Param name="mode" type="enum">
-                        Analysis depth — <code>annotated</code> (default; Blueprint +
+                        Analysis depth — <code>standard</code> (default; Blueprint +
                         callout storyboard) or <code>precision</code> (multi-pass, most
                         accurate).
                     </Param>
@@ -126,7 +126,7 @@ export default function ApiReferencePage() {
             <Section title="Auth & limits">
                 <p>
                     The MCP server authenticates against your MotionLens account; each analysis
-                    consumes credits by mode (Annotated 2 · Precision 3). Failed analyses are refunded
+                    consumes credits by mode (Standard 2 · Precision 3). Failed analyses are refunded
                     automatically. Need higher throughput? Reach us at{" "}
                     <a
                         href="mailto:support@motionlens.dev"

@@ -235,7 +235,10 @@ export function BlueprintView({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
-        <span className="text-xs text-muted-foreground capitalize">{mode} analysis</span>
+        {/* display name — the 2cr base pipeline (value "annotated") is NAMED Standard */}
+        <span className="text-xs text-muted-foreground">
+          {mode === "precision" ? "Precision" : "Standard"} analysis
+        </span>
         <Button variant="outline" size="sm" onClick={onReset} className="h-7 gap-1.5 text-xs">
           <RotateCcw className="size-3.5" /> New analysis
         </Button>

@@ -700,7 +700,7 @@ export const siteConfig = {
                 period: "month",
                 yearlyPrice: "$90",
                 features: [
-                    "150 credits / month (75 Annotated or 50 Precision)",
+                    "150 credits / month (75 Standard or 50 Precision)",
                     "Precision Mode — multi-pass + annotated storyboard",
                     "MCP server for Claude Code, Cursor, Windsurf, Codex",
                     "Priority processing",
@@ -720,7 +720,7 @@ export const siteConfig = {
                 period: "month",
                 yearlyPrice: "$190",
                 features: [
-                    "300 credits / month (150 Annotated or 100 Precision)",
+                    "300 credits / month (150 Standard or 100 Precision)",
                     "Best per-analysis rate",
                     "Highest-priority processing",
                     "Early access to new export targets",
@@ -767,13 +767,13 @@ export const siteConfig = {
                 id: 5,
                 question: "How accurate is it? What is Precision Mode?",
                 answer:
-                    "Annotated (the default) returns the full Blueprint plus a captioned storyboard. Precision Mode adds a multi-pass analysis and a mechanic pass for the highest-fidelity motion — exact timings, easings, and stagger.",
+                    "Standard (the default) returns the full Blueprint plus a captioned storyboard. Precision Mode adds a multi-pass analysis and a mechanic pass for the highest-fidelity motion — exact timings, easings, and stagger.",
             },
             {
                 id: 6,
                 question: "How does pricing work?",
                 answer:
-                    "Credit-based, and every account starts free with 5 credits (no card). Pro ($9) gives 150 credits/month, Studio ($19) gives 300. An Annotated analysis is 2 credits, Precision is 3 — and code export is always free.",
+                    "Credit-based, and every account starts free with 5 credits (no card). Pro ($9) gives 150 credits/month, Studio ($19) gives 300. A Standard analysis is 2 credits, Precision is 3 — and code export is always free.",
             },
         ],
     },
