@@ -38,11 +38,11 @@ const handler = createMcpHandler(
   (server) => {
     server.tool(
       "analyze_clip",
-      "Analyze a UI animation from a direct video URL (mp4/mov/webm, ≤30s standard/annotated, ≤10s precision) into a Motion Blueprint — exact timings, easings, transforms and an agent-ready prompt for recreating the animation. Spends the user's MotionLens credits (standard 1 / annotated 2 / precision 3). Takes 1–3 minutes.",
+      "Analyze a UI animation from a direct video URL (mp4/mov/webm, ≤30s annotated, ≤10s precision) into a Motion Blueprint — exact timings, easings, transforms and an agent-ready prompt for recreating the animation. Spends the user's MotionLens credits (annotated 2 / precision 3). Takes 1–3 minutes.",
       {
         video_url: z.string().url().describe("Direct https URL of the clip (a file URL, not a page)."),
-        mode: z.enum(["standard", "annotated", "precision"]).optional()
-          .describe("standard = fast blueprint (default) · annotated = + storyboard · precision = deepest multi-pass, ≤10s clips"),
+        mode: z.enum(["annotated", "precision"]).optional()
+          .describe("annotated = blueprint + storyboard (default) · precision = deepest multi-pass, ≤10s clips"),
         context: z.string().max(500).optional()
           .describe("Optional focus, e.g. 'focus on the card hover, ignore the cursor'."),
       },
@@ -76,7 +76,7 @@ const handler = createMcpHandler(
         // 3) Run the real pipeline via the API (API-key auth) and read the NDJSON stream.
         const form = new FormData();
         form.set("clipKey", clipKey);
-        form.set("mode", mode || "standard");
+        form.set("mode", mode || "annotated");
         if (context?.trim()) form.set("context", context.trim());
         const res = await fetch(`${origin}/api/analyze`, {
           method: "POST",

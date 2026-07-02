@@ -48,7 +48,7 @@ export default async function BillingPage() {
                 </span>
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Standard 1 · Annotated 2 · Precision 3 · code export free
+                Annotated 2 · Precision 3 · code export free
               </p>
             </div>
           </div>

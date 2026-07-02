@@ -59,9 +59,9 @@ export default function ApiReferencePage() {
                         <code>CSS</code>, <code>GSAP</code>, or <code>Tailwind</code>.
                     </Param>
                     <Param name="mode" type="enum">
-                        Analysis depth — <code>standard</code> (default, ~40s),{" "}
-                        <code>annotated</code> (adds a callout storyboard), or{" "}
-                        <code>precision</code> (multi-pass, most accurate).
+                        Analysis depth — <code>annotated</code> (default; Blueprint +
+                        callout storyboard) or <code>precision</code> (multi-pass, most
+                        accurate).
                     </Param>
                     <Param name="include_storyboard" type="boolean">
                         Return storyboard keyframe images. Default <code>true</code>.

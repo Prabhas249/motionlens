@@ -1070,7 +1070,7 @@ export async function POST(req: Request) {
   // Credit bookkeeping — so we can refund the run if the engine errors after charging.
   let supa: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof adminClient> | null = null;
   let charged = false;
-  let creditCost = 1; // credits this run spends (Standard 1 / Annotated 2 / Precision 3) — for refund on error
+  let creditCost = 2; // credits this run spends (Annotated 2 / Precision 3) — for refund on error
   // Set once the credit is consumed; picks the right RPC for the auth method.
   let refund: () => Promise<void> = async () => {};
   try {
@@ -1088,10 +1088,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "No video uploaded." }, { status: 400 });
     }
 
-    // Mode decides how many credits the run spends: Standard 1, Annotated 2, Precision 3.
+    // Mode decides how many credits the run spends: Annotated 2, Precision 3.
+    // Standard mode was RETIRED (July 2) — anything that isn't "precision"
+    // (including legacy "standard" from old clients) runs as Annotated.
     const modeRaw = form.get("mode");
-    const mode = modeRaw === "precision" || modeRaw === "annotated" ? modeRaw : "standard";
-    creditCost = mode === "precision" ? 3 : mode === "annotated" ? 2 : 1;
+    const mode = modeRaw === "precision" ? "precision" : "annotated";
+    creditCost = mode === "precision" ? 3 : 2;
 
     // --- auth + mode-weighted credit gate ---
     // Browser callers carry a session cookie; programmatic callers (the
@@ -1173,7 +1175,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     tmpPath = join(tmpdir(), safeName);
     await writeFile(tmpPath, bytes);
 
-    // Enforce the mode clip caps (Standard/Annotated 30s, Precision 10s) BEFORE
+    // Enforce the mode clip caps (Annotated 30s, Precision 10s) BEFORE
     // any Gemini spend — the client checks too, but the API must not trust it.
     // Small tolerance so a 30.4s trim isn't rejected.
     const capS = mode === "precision" ? 10 : 30;
@@ -1181,7 +1183,7 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     if (durS > capS + 1.5) {
       if (charged) await refund();
       return Response.json(
-        { error: `${mode === "precision" ? "Precision" : mode === "annotated" ? "Annotated" : "Standard"} mode caps clips at ${capS}s — this one is ${Math.round(durS)}s. Trim it${mode === "precision" ? " or use Standard/Annotated" : ""} and try again.` },
+        { error: `${mode === "precision" ? "Precision" : "Annotated"} mode caps clips at ${capS}s — this one is ${Math.round(durS)}s. Trim it${mode === "precision" ? " or use Annotated" : ""} and try again.` },
         { status: 400 },
       );
     }
@@ -1198,16 +1200,16 @@ as secondary. The summary, timeline, motion, storyboard, and agent_prompt must a
     }
     if (uploaded.state === "FAILED") {
       if (charged) await refund();
-      return Response.json({ error: "MotionLens couldn't process this video — try a shorter clip or Standard mode." }, { status: 500 });
+      return Response.json({ error: "MotionLens couldn't process this video — try a shorter or smaller clip." }, { status: 500 });
     }
 
     const uri = uploaded.uri!;
     const mime = uploaded.mimeType!;
     // Sample at higher fps so fast/early motion (logo fade, keyboard rise, suggestions) isn't
     // missed — Gemini's default is only 1 fps, which skips quick sequences entirely.
-    // Per-mode fps: Standard 6, Annotated 8, Precision 12 (Precision is capped at 10s, so 12fps
+    // Per-mode fps: Annotated 8, Precision 12 (Precision is capped at 10s, so 12fps
     // costs the same as old 6fps×20s but doubles temporal resolution on the moment that matters).
-    const fps = mode === "precision" ? 12 : mode === "annotated" ? 8 : 6;
+    const fps = mode === "precision" ? 12 : 8;
     const videoPart = { fileData: { fileUri: uri, mimeType: mime }, videoMetadata: { fps } };
     // Adaptive Keyframe Fusion: sharp full-res stills at the energy events, filled in after energy resolves.
     let keyframeParts: { inlineData: { mimeType: string; data: string } }[] = [];

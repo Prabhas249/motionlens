@@ -11,15 +11,16 @@ import { WaveSpinner } from "@/components/ui/wave-spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import type { Mode } from "@/components/blueprint-view";
 
+// Standard mode retired July 2 — Annotated (2cr) is the base mode now.
 const MODES: { value: Mode; label: string }[] = [
-  { value: "standard", label: "Standard" },
   { value: "annotated", label: "Annotated" },
   { value: "precision", label: "Precision" },
 ];
 
 // Per-mode clip caps (seconds) — Precision is deep multi-pass on ONE short
 // interaction. The server enforces the same caps; checking here saves the
-// user a full upload before finding out.
+// user a full upload before finding out. ("standard" only lingers for old
+// saved analyses; it can't be selected.)
 const CAP_S: Record<Mode, number> = { standard: 30, annotated: 30, precision: 10 };
 
 // Read a video File's duration via metadata (no full decode). Resolves null
@@ -88,7 +89,7 @@ export function AnalysisInput({
     const cap = CAP_S[mode];
     if (dur !== null && dur > cap + 0.5) {
       setCapError(
-        `${MODES.find((m) => m.value === mode)?.label} caps clips at ${cap}s — this one is ${Math.round(dur)}s. Trim it${mode === "precision" ? " or switch to Standard/Annotated" : ""}.`,
+        `${MODES.find((m) => m.value === mode)?.label} caps clips at ${cap}s — this one is ${Math.round(dur)}s. Trim it${mode === "precision" ? " or switch to Annotated" : ""}.`,
       );
       return;
     }

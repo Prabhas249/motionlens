@@ -37,14 +37,10 @@ export default function DocsPage() {
                 <p>Each mode trades depth for credits — pick per clip:</p>
                 <ul className="ml-5 list-disc space-y-2">
                     <li>
-                        <strong className="text-foreground">Standard</strong> (1 credit) — a clean
-                        Blueprint: summary, timeline, and per-element motion. Best for most
-                        clips.
-                    </li>
-                    <li>
-                        <strong className="text-foreground">Annotated</strong> (2 credits) — adds a
-                        captioned storyboard of key frames so you (and multimodal agents) can see
-                        the motion, not just read it.
+                        <strong className="text-foreground">Annotated</strong> (2 credits) — the
+                        full Blueprint (summary, timeline, per-element motion) plus a captioned
+                        storyboard of key frames so you (and multimodal agents) can see the
+                        motion, not just read it. Best for most clips.
                     </li>
                     <li>
                         <strong className="text-foreground">Precision</strong> (3 credits) — runs

@@ -36,10 +36,10 @@ function putWithProgress(
 export default function Page() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
   const [frames, setFrames] = useState<Frame[]>([])
-  const [mode, setMode] = useState<Mode>("standard")
+  const [mode, setMode] = useState<Mode>("annotated")
   // Mode of the DISPLAYED result — snapshotted when a run starts / a saved
   // analysis loads. Flipping the input selector must not restyle the result.
-  const [viewMode, setViewMode] = useState<Mode>("standard")
+  const [viewMode, setViewMode] = useState<Mode>("annotated")
   const [phase, setPhase] = useState<"idle" | "uploading" | "analyzing" | "error">("idle")
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState("")
@@ -82,8 +82,10 @@ export default function Page() {
       if (!data?.blueprint) throw new Error("missing")
       setBlueprint(data.blueprint as Blueprint)
       if (data.mode) {
-        setMode(data.mode as Mode)
         setViewMode(data.mode as Mode)
+        // the input selector only offers the live modes — an old "standard"
+        // analysis renders fine but must not leave the selector on a dead value
+        if (data.mode === "annotated" || data.mode === "precision") setMode(data.mode as Mode)
       }
       setFrames(Array.isArray(data.frames) ? (data.frames as Frame[]) : [])
       setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
