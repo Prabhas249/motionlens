@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,12 +10,17 @@ import { cn } from "@/lib/utils";
 export function CreditsBadge({ className }: { className?: string }) {
   const [credits, setCredits] = useState<number | null>(null);
   const [plan, setPlan] = useState<string>("free");
+  // focus + credits-updated can fire together; only the LATEST fetch may write,
+  // or a slow stale response shows an old balance.
+  const seqRef = useRef(0);
 
   const load = useCallback(async () => {
+    const seq = ++seqRef.current;
     try {
       const r = await fetch("/api/credits", { cache: "no-store" });
-      if (!r.ok) return;
+      if (!r.ok || seqRef.current !== seq) return;
       const d = await r.json();
+      if (seqRef.current !== seq) return;
       setCredits(typeof d.credits === "number" ? d.credits : null);
       setPlan(typeof d.plan === "string" ? d.plan : "free");
     } catch {

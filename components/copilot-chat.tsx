@@ -8,8 +8,11 @@ import { AiInput } from "@/components/ai-input";
 
 // Right-pane Copilot: a Gemini chat whose composer IS the nexus AiInput.
 export function CopilotChat({ blueprint }: { blueprint?: unknown }) {
+  // NOTE: the transport (and any body baked into it) is captured ONCE when the
+  // chat instance is created — at mount `blueprint` is still null, so the body
+  // must be attached per-send (see sendMessage below), not here.
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat", body: { blueprint } }),
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
   const isBusy = status === "submitted" || status === "streaming";
@@ -53,7 +56,8 @@ export function CopilotChat({ blueprint }: { blueprint?: unknown }) {
         <AiInput
           disabled={isBusy}
           onSend={(text) => {
-            if (text.trim()) sendMessage({ text });
+            // body attached per-send so the CURRENT blueprint rides along
+            if (text.trim()) sendMessage({ text }, { body: { blueprint } });
           }}
         />
       </div>

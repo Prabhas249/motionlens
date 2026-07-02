@@ -46,11 +46,18 @@ export function NavHistory() {
     setActiveId(new URLSearchParams(window.location.search).get("a"));
     load();
     const onUpdate = () => load();
+    // dashboard announces the open analysis (fresh run / reset) → keep the highlight in sync
+    const onActive = (e: Event) => {
+      const detail = (e as CustomEvent<{ id?: string | null }>).detail;
+      setActiveId(detail?.id ?? null);
+    };
     window.addEventListener("credits-updated", onUpdate); // fires after each run
     window.addEventListener("history-updated", onUpdate);
+    window.addEventListener("analysis-active", onActive as EventListener);
     return () => {
       window.removeEventListener("credits-updated", onUpdate);
       window.removeEventListener("history-updated", onUpdate);
+      window.removeEventListener("analysis-active", onActive as EventListener);
     };
   }, [load]);
 
@@ -72,6 +79,10 @@ export function NavHistory() {
                 onClick={(e: MouseEvent) => {
                   // Let cmd/ctrl/middle-click open a new tab normally.
                   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                  // Only the dashboard listens for load-analysis. From any other
+                  // page (settings etc.) let the link navigate normally — the
+                  // dashboard's ?a= deep-link loader takes it from there.
+                  if (window.location.pathname !== "/dashboard") return;
                   e.preventDefault();
                   setActiveId(it.id);
                   window.history.replaceState(null, "", `/dashboard?a=${it.id}`);

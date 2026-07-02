@@ -17,6 +17,28 @@ const MODES: { value: Mode; label: string }[] = [
   { value: "precision", label: "Precision" },
 ];
 
+// Per-mode clip caps (seconds) — Precision is deep multi-pass on ONE short
+// interaction. The server enforces the same caps; checking here saves the
+// user a full upload before finding out.
+const CAP_S: Record<Mode, number> = { standard: 30, annotated: 30, precision: 10 };
+
+// Read a video File's duration via metadata (no full decode). Resolves null
+// when the browser can't read it — the server check is the backstop then.
+function readDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    const done = (d: number | null) => {
+      URL.revokeObjectURL(url);
+      resolve(d);
+    };
+    v.onloadedmetadata = () => done(isFinite(v.duration) ? v.duration : null);
+    v.onerror = () => done(null);
+    v.src = url;
+  });
+}
+
 export function AnalysisInput({
   mode,
   setMode,
@@ -38,6 +60,7 @@ export function AnalysisInput({
   const [file, setFile] = React.useState<File | null>(null);
   const [context, setContext] = React.useState("");
   const [screenshot, setScreenshot] = React.useState<File | null>(null);
+  const [capError, setCapError] = React.useState("");
   const fileRef = React.useRef<HTMLInputElement>(null);
   const shotRef = React.useRef<HTMLInputElement>(null);
 
@@ -56,6 +79,21 @@ export function AnalysisInput({
     setFile(null);
     setScreenshot(null);
     setContext("");
+    setCapError("");
+  }
+
+  async function handleAnalyze() {
+    if (!file) return;
+    const dur = await readDuration(file);
+    const cap = CAP_S[mode];
+    if (dur !== null && dur > cap + 0.5) {
+      setCapError(
+        `${MODES.find((m) => m.value === mode)?.label} caps clips at ${cap}s — this one is ${Math.round(dur)}s. Trim it${mode === "precision" ? " or switch to Standard/Annotated" : ""}.`,
+      );
+      return;
+    }
+    setCapError("");
+    onAnalyze(file, context, screenshot);
   }
 
   // ---- BUSY ----
@@ -104,7 +142,10 @@ export function AnalysisInput({
 
         <Tabs
           value={mode}
-          onValueChange={(v) => setMode(v as Mode)}
+          onValueChange={(v) => {
+            setMode(v as Mode);
+            setCapError(""); // cap depends on mode — re-judge on next Analyze
+          }}
           variant="segment"
           className="w-full"
         >
@@ -117,13 +158,13 @@ export function AnalysisInput({
           </TabsList>
         </Tabs>
 
-        <Button onClick={() => onAnalyze(file, context, screenshot)} className="w-full gap-1.5">
+        <Button onClick={handleAnalyze} className="w-full gap-1.5">
           <Sparkles className="size-4" /> Analyze
         </Button>
 
-        {phase === "error" && error && (
+        {(capError || (phase === "error" && error)) && (
           <p className="flex items-center gap-1.5 text-xs text-red-400">
-            <AlertCircle className="size-3.5 shrink-0" /> {error}
+            <AlertCircle className="size-3.5 shrink-0" /> {capError || error}
           </p>
         )}
 

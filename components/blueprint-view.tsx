@@ -81,6 +81,10 @@ export function BlueprintView({
   // saved copy on load and filled as new frameworks are generated, so we never
   // regenerate the same thing twice (reopening history is instant).
   const codeCacheRef = React.useRef<Record<string, string>>({});
+  // Generation sequence: bumped on every genCode call so a stale stream (user
+  // switched framework or opened another analysis mid-generation) can't write
+  // interleaved code into the view or pollute the cache of the newer analysis.
+  const genSeqRef = React.useRef(0);
 
   React.useEffect(() => {
     if (!busy) {
@@ -104,6 +108,8 @@ export function BlueprintView({
 
   async function genCode(fw?: string) {
     if (!bp) return;
+    const seq = ++genSeqRef.current;
+    const live = () => genSeqRef.current === seq; // am I still the latest request?
     const useFw = fw ?? framework;
     // Already have this framework's code? Show it instantly — no regeneration.
     const cached = codeCacheRef.current[useFw];
@@ -121,6 +127,10 @@ export function BlueprintView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blueprint: bp, framework: useFw, frames: frames.map((f) => f.img) }),
       });
+      if (!live()) {
+        res.body?.cancel().catch(() => {});
+        return;
+      }
       if (!res.ok || !res.body) {
         setCode("Failed to generate code.");
         return;
@@ -131,6 +141,10 @@ export function BlueprintView({
       let acc = "";
       for (;;) {
         const { done, value } = await reader.read();
+        if (!live()) {
+          reader.cancel().catch(() => {});
+          return;
+        }
         if (done) break;
         acc += decoder.decode(value, { stream: true });
         setCode(strip(acc));
@@ -149,9 +163,9 @@ export function BlueprintView({
         }
       }
     } catch {
-      setCode("Failed to generate code.");
+      if (live()) setCode("Failed to generate code.");
     } finally {
-      setGenning(false);
+      if (live()) setGenning(false);
     }
   }
 
@@ -159,10 +173,12 @@ export function BlueprintView({
   // otherwise generate it once (fresh runs). Never regenerates on reopen.
   React.useEffect(() => {
     setCodeCopied(false);
+    setLightbox(null); // a stale enlarged frame must not survive an analysis switch
     if (blueprint) {
       codeCacheRef.current = { ...(savedCode ?? {}) };
       void genCode();
     } else {
+      genSeqRef.current++; // invalidate any in-flight generation
       codeCacheRef.current = {};
       setCode("");
     }

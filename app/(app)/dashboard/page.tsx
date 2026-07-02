@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { AppShell } from "@/components/app-shell"
 import { AnalysisInput } from "@/components/analysis-input"
@@ -37,6 +37,9 @@ export default function Page() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
   const [frames, setFrames] = useState<Frame[]>([])
   const [mode, setMode] = useState<Mode>("standard")
+  // Mode of the DISPLAYED result — snapshotted when a run starts / a saved
+  // analysis loads. Flipping the input selector must not restyle the result.
+  const [viewMode, setViewMode] = useState<Mode>("standard")
   const [phase, setPhase] = useState<"idle" | "uploading" | "analyzing" | "error">("idle")
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState("")
@@ -45,27 +48,56 @@ export default function Page() {
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [savedCode, setSavedCode] = useState<Record<string, string>>({})
 
+  // Run token: every new run/load/reset bumps it and aborts the in-flight
+  // stream, and every async continuation checks it before touching state — so
+  // a stale history fetch or a still-streaming analysis can never clobber a
+  // newer view (the classic "clicked another item mid-run" races).
+  const runRef = useRef(0)
+  const xhrRef = useRef<XMLHttpRequest | null>(null)
+  // Synchronous double-submit guard (two Analyze clicks in one tick would both
+  // see phase === "idle" and each burn a credit).
+  const startingRef = useRef(false)
+  const beginRun = useCallback(() => {
+    runRef.current += 1
+    xhrRef.current?.abort()
+    xhrRef.current = null
+    startingRef.current = false
+    return runRef.current
+  }, [])
+
+  // Reflect the open analysis in the URL + sidebar highlight (deep-linkable).
+  const markActive = useCallback((id: string) => {
+    window.history.replaceState(null, "", `/dashboard?a=${id}`)
+    window.dispatchEvent(new CustomEvent("analysis-active", { detail: { id } }))
+  }, [])
+
   // Load a saved analysis into the view — no page reload, so no flicker.
   const loadAnalysis = useCallback(async (id: string) => {
+    const run = beginRun()
     try {
       const r = await fetch(`/api/history/${id}`, { cache: "no-store" })
-      if (!r.ok) return
-      const data = await r.json()
-      if (data?.blueprint) {
-        setBlueprint(data.blueprint as Blueprint)
-        if (data.mode) setMode(data.mode as Mode)
-        setFrames(Array.isArray(data.frames) ? (data.frames as Frame[]) : [])
-        setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
-        setAnalysisId(data.id ?? id)
-        setSavedCode(data.code && typeof data.code === "object" ? data.code : {})
-        setStoryboardLoading(false)
-        setError("")
-        setPhase("idle")
+      if (runRef.current !== run) return
+      const data = r.ok ? await r.json() : null
+      if (runRef.current !== run) return
+      if (!data?.blueprint) throw new Error("missing")
+      setBlueprint(data.blueprint as Blueprint)
+      if (data.mode) {
+        setMode(data.mode as Mode)
+        setViewMode(data.mode as Mode)
       }
+      setFrames(Array.isArray(data.frames) ? (data.frames as Frame[]) : [])
+      setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
+      setAnalysisId(data.id ?? id)
+      setSavedCode(data.code && typeof data.code === "object" ? data.code : {})
+      setStoryboardLoading(false)
+      setError("")
+      setPhase("idle")
     } catch {
-      /* ignore */
+      if (runRef.current !== run) return
+      setError("Couldn't open that analysis — it may have been deleted.")
+      setPhase("error")
     }
-  }, [])
+  }, [beginRun])
 
   // Open from a deep link (?a=<id>) and from sidebar clicks (a custom event, so
   // there's no navigation → no flicker and the history list doesn't reload).
@@ -83,11 +115,15 @@ export default function Page() {
   const busy = phase === "uploading" || phase === "analyzing"
 
   async function analyze(file: File, context: string, screenshot?: File | null) {
+    if (startingRef.current || busy) return // double-submit guard
     if (!file.type.startsWith("video/")) {
       setError("Please choose a video file (mp4, mov, webm).")
       setPhase("error")
       return
     }
+    const run = beginRun()
+    startingRef.current = true
+    const sentMode = mode // snapshot — the selector can move on while we run
     setBlueprint(null)
     setFrames([])
     setClipUrl(null)
@@ -96,6 +132,7 @@ export default function Page() {
     setProgress(0)
     setError("")
     setStoryboardLoading(false)
+    setViewMode(sentMode)
     setPhase("uploading")
 
     // 1) Presigned upload straight to R2 — no size limit, real upload progress.
@@ -109,29 +146,36 @@ export default function Page() {
       const d = await r.json()
       if (!r.ok || !d.url || !d.key) throw new Error(d.error || "no url")
       clipKey = d.key
-      await putWithProgress(d.url, file, setProgress)
+      if (runRef.current !== run) return
+      await putWithProgress(d.url, file, (p) => {
+        if (runRef.current === run) setProgress(p)
+      })
     } catch {
+      if (runRef.current !== run) return
+      startingRef.current = false
       setError("Upload failed — please try again.")
       setPhase("error")
       return
     }
+    if (runRef.current !== run) return
     setPhase("analyzing")
 
     // 2) Analyze by key — tiny body, streams the NDJSON result back.
     const form = new FormData()
     form.set("clipKey", clipKey)
-    form.set("mode", mode)
+    form.set("mode", sentMode)
     if (context.trim()) form.set("context", context.trim())
     if (screenshot) form.set("screenshot", screenshot)
 
     const xhr = new XMLHttpRequest()
+    xhrRef.current = xhr
     xhr.open("POST", "/api/analyze")
     // Read the NDJSON stream incrementally: {type:"blueprint"} arrives first → show it;
     // {type:"frames"} arrives after → fill in the storyboard.
     let handled = 0
     let gotBlueprint = false
     const pump = () => {
-      if (xhr.status >= 400) return
+      if (runRef.current !== run || xhr.status >= 400) return
       const parts = xhr.responseText.split("\n")
       for (let i = handled; i < parts.length - 1; i++) {
         const line = parts[i].trim()
@@ -140,12 +184,15 @@ export default function Page() {
           const msg = JSON.parse(line)
           if (msg.type === "blueprint") {
             gotBlueprint = true
+            startingRef.current = false
             setBlueprint(msg.blueprint as Blueprint)
             setFrames([])
             setStoryboardLoading(true)
             setPhase("idle")
-            setAnalysisId(typeof msg.analysisId === "string" ? msg.analysisId : null)
+            const id = typeof msg.analysisId === "string" ? msg.analysisId : null
+            setAnalysisId(id)
             setSavedCode({})
+            if (id) markActive(id) // deep-linkable + sidebar highlight
             // credits were just spent — refresh the credits badge + history
             window.dispatchEvent(new Event("credits-updated"))
           } else if (msg.type === "frames") {
@@ -158,6 +205,8 @@ export default function Page() {
     }
     xhr.onprogress = pump
     xhr.onload = () => {
+      if (runRef.current !== run) return
+      startingRef.current = false
       if (xhr.status >= 400) {
         try {
           setError(JSON.parse(xhr.responseText)?.error || `Error ${xhr.status}`)
@@ -176,6 +225,8 @@ export default function Page() {
       }
     }
     xhr.onerror = () => {
+      if (runRef.current !== run) return
+      startingRef.current = false
       setStoryboardLoading(false)
       // If the blueprint already arrived, keep it — only the storyboard was interrupted.
       if (gotBlueprint) return
@@ -186,6 +237,7 @@ export default function Page() {
   }
 
   function reset() {
+    beginRun() // cancel any in-flight stream so it can't resurrect the view
     setBlueprint(null)
     setFrames([])
     setClipUrl(null)
@@ -194,6 +246,8 @@ export default function Page() {
     setError("")
     setStoryboardLoading(false)
     setPhase("idle")
+    window.history.replaceState(null, "", "/dashboard")
+    window.dispatchEvent(new CustomEvent("analysis-active", { detail: { id: null } }))
   }
 
   function onCorrection(c: unknown) {
@@ -214,7 +268,7 @@ export default function Page() {
           <BlueprintView
             blueprint={blueprint}
             frames={frames}
-            mode={mode}
+            mode={viewMode}
             busy={busy}
             phase={phase}
             storyboardLoading={storyboardLoading}
@@ -252,7 +306,9 @@ export default function Page() {
             onAnalyze={analyze}
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border">
-            <CopilotChat blueprint={blueprint} />
+            {/* key: opening a different analysis resets the conversation, so the
+                copilot never answers about A while B is on screen */}
+            <CopilotChat key={analysisId ?? "fresh"} blueprint={blueprint} />
           </div>
         </aside>
       </div>
