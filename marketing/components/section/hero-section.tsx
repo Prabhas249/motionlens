@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { ArrowRight, ArrowDown, Check } from "lucide-react";
 import { siteConfig } from "@marketing/lib/config";
@@ -141,6 +142,11 @@ function BlueprintCard() {
 
 export function HeroSection() {
     const { hero } = siteConfig;
+    // LCP guard: the rotating word must exist at FIRST paint. Server-render it
+    // as plain text; swap in the animated version only after hydration — same
+    // pixels, so the h1 never repaints larger and LCP stays at first paint.
+    const [hydrated, setHydrated] = useState(false);
+    useEffect(() => setHydrated(true), []);
 
     return (
         <section
@@ -175,14 +181,18 @@ export function HeroSection() {
                 />
                 <h1 className="text-balance text-center text-5xl font-semibold tracking-tighter text-foreground md:text-6xl lg:text-7xl">
                     Finally, AI agents understand{" "}
-                    <DiaTextReveal
-                        text={["motion", "animations", "interactions", "transitions"]}
-                        textColor="#2A48F0"
-                        colors={["#2A48F0"]}
-                        repeat
-                        repeatDelay={1.2}
-                        duration={1.3}
-                    />
+                    {hydrated ? (
+                        <DiaTextReveal
+                            text={["motion", "animations", "interactions", "transitions"]}
+                            textColor="#2A48F0"
+                            colors={["#2A48F0"]}
+                            repeat
+                            repeatDelay={1.2}
+                            duration={1.3}
+                        />
+                    ) : (
+                        <span style={{ color: "#2A48F0" }}>motion</span>
+                    )}
                 </h1>
                 <p className="mx-auto max-w-xl text-balance text-center text-lg text-muted-foreground">
                     Turn any UI animation into an agent-ready Motion Blueprint — trigger,
