@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageShell } from "@marketing/components/page-shell";
 import { listShowcases } from "@/lib/showcase";
+import { ContentNav } from "@marketing/components/content-nav";
 
 export const revalidate = 1800;
 
@@ -20,6 +21,7 @@ export default async function AnimationsIndex() {
       title="Real UI motion, decoded"
       intro="Every entry is a real analysis: the clip, the storyboard, and the exact timings + easing a developer (or their AI agent) can build from."
     >
+      <ContentNav active="/animations" />
       <div className="flex flex-col divide-y divide-border">
         {showcases.map((s) => (
           <Link

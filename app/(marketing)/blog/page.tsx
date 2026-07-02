@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageShell } from "@marketing/components/page-shell";
 import { POSTS } from "@marketing/lib/posts";
+import { ContentNav } from "@marketing/components/content-nav";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -16,6 +17,7 @@ export default function BlogIndex() {
       title="Notes on motion"
       intro="Animation teardowns, engineering notes, and tutorials on making AI agents implement motion correctly."
     >
+      <ContentNav active="/blog" />
       <div className="flex flex-col divide-y divide-border">
         {POSTS.map((p) => (
           <Link
