@@ -8,6 +8,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { HistoryIcon } from "lucide-react";
 
@@ -75,7 +76,7 @@ export function NavHistory() {
                 size="sm"
                 isActive={activeId === it.id}
                 className="h-auto items-start gap-2 py-1.5"
-                render={<a href={`/dashboard?a=${it.id}`} />}
+                render={<Link href={`/dashboard?a=${it.id}`} />}
                 onClick={(e: MouseEvent) => {
                   // Let cmd/ctrl/middle-click open a new tab normally.
                   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;

@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { presignGet, r2Delete, r2GetBytes } from "@/lib/r2";
+import { presignGet, r2Delete } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
-// One saved analysis (blueprint + a presigned replay URL for its clip).
+// One saved analysis. The multi-MB storyboard JSON is NOT proxied through this
+// function anymore (that made every history click wait for a server-side R2
+// download) — the client gets a presigned framesUrl and streams it straight
+// from R2 while the blueprint is already on screen.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -24,25 +27,16 @@ export async function GET(
 
   if (error || !data) return Response.json({ error: "Not found" }, { status: 404 });
 
+  // Presigning is a local HMAC — no network round-trips here.
   let clipUrl: string | null = null;
-  if (data.clip_key) {
-    try {
-      clipUrl = await presignGet(data.clip_key as string, 3600);
-    } catch {
-      /* clip may be gone — reload still works without replay */
-    }
+  let framesUrl: string | null = null;
+  try {
+    if (data.clip_key) clipUrl = await presignGet(data.clip_key as string, 3600);
+    if (data.frames_key) framesUrl = await presignGet(data.frames_key as string, 3600);
+  } catch {
+    /* media may be gone — reload still works without replay/storyboard */
   }
-  // Rehydrate the storyboard from R2 so reopening shows it.
-  let frames: unknown[] = [];
-  if (data.frames_key) {
-    try {
-      const buf = await r2GetBytes(data.frames_key as string);
-      if (buf) frames = JSON.parse(buf.toString("utf8"));
-    } catch {
-      /* storyboard missing — reload still works without it */
-    }
-  }
-  return Response.json({ ...data, clipUrl, frames });
+  return Response.json({ ...data, clipUrl, framesUrl });
 }
 
 // Delete a saved analysis (and its stored clip).

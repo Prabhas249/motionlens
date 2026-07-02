@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
 	Collapsible,
@@ -46,14 +47,14 @@ export function NavGroup({ label, items }: SidebarNavGroup) {
 													<SidebarMenuSub>
 														{item.subItems?.map((subItem) => (
 															<SidebarMenuSubItem key={subItem.title}>
-																<SidebarMenuSubButton isActive={isActive(subItem)} render={<a href={subItem.path} />}>{subItem.icon}<span>{subItem.title}</span></SidebarMenuSubButton>
+																<SidebarMenuSubButton isActive={isActive(subItem)} render={<Link href={subItem.path ?? "#"} />}>{subItem.icon}<span>{subItem.title}</span></SidebarMenuSubButton>
 															</SidebarMenuSubItem>
 														))}
 													</SidebarMenuSub>
 												</CollapsibleContent>
 											</>
 										) : (
-											<SidebarMenuButton isActive={active} render={<a href={item.path} />}>{item.icon}<span>{item.title}</span></SidebarMenuButton>
+											<SidebarMenuButton isActive={active} render={<Link href={item.path ?? "#"} />}>{item.icon}<span>{item.title}</span></SidebarMenuButton>
 										)}</Collapsible>
 					);
 				})}

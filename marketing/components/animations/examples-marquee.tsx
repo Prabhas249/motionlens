@@ -1,4 +1,6 @@
+"use client";
 /* eslint-disable @next/next/no-img-element */
+import { useRef, useState } from "react";
 import { Marquee } from "@marketing/components/ui/marquee";
 import { cn } from "@marketing/lib/utils";
 
@@ -11,6 +13,47 @@ export interface ExampleClip {
     video?: string;
 }
 
+// Perf-critical: cards live inside a marquee that REPEATS its children, so a
+// naive <video autoPlay> here multiplied into ~50MB of downloads on page load
+// (Lighthouse: 37). The poster jpg is what you actually see in a moving strip —
+// the video only loads + plays on hover, which is when anyone watches it.
+function HoverVideo({ poster, video, title }: { poster: string; video: string; title: string }) {
+    const [active, setActive] = useState(false);
+    const ref = useRef<HTMLVideoElement | null>(null);
+    return (
+        <div
+            className="h-full w-full"
+            onMouseEnter={() => {
+                setActive(true);
+                // play() can race the first mount — retry on next tick
+                requestAnimationFrame(() => ref.current?.play().catch(() => {}));
+            }}
+            onMouseLeave={() => ref.current?.pause()}
+        >
+            {active ? (
+                <video
+                    ref={ref}
+                    className="h-full w-full origin-[42%_42%] scale-[1.2] object-cover"
+                    src={video}
+                    poster={poster}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="none"
+                />
+            ) : (
+                <img
+                    src={poster}
+                    alt={title}
+                    loading="lazy"
+                    className="h-full w-full origin-[42%_42%] scale-[1.2] object-cover"
+                />
+            )}
+        </div>
+    );
+}
+
 export const ExampleCard = ({ title, tag, credit, poster, video }: ExampleClip) => (
     <figure
         className={cn(
@@ -21,20 +64,12 @@ export const ExampleCard = ({ title, tag, credit, poster, video }: ExampleClip) 
     >
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
             {video ? (
-                <video
-                    className="h-full w-full origin-[42%_42%] scale-[1.2] object-cover"
-                    src={video}
-                    poster={poster}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                />
+                <HoverVideo poster={poster} video={video} title={title} />
             ) : (
                 <img
                     src={poster}
                     alt={title}
+                    loading="lazy"
                     className="h-full w-full origin-[42%_42%] scale-[1.2] object-cover transition-transform duration-500 group-hover:scale-[1.24]"
                 />
             )}
@@ -66,12 +101,14 @@ export function ExamplesMarquee({ examples }: { examples: ExampleClip[] }) {
     return (
         <div className="relative w-full overflow-hidden py-8">
             <div className="flex flex-col gap-4">
-                <Marquee className="[--duration:55s]" pauseOnHover>
+                {/* repeat 2 (not the default 4): halves the DOM — two copies already
+                    cover any viewport at 6 × 300px cards per copy */}
+                <Marquee className="[--duration:55s]" pauseOnHover repeat={2}>
                     {firstRow.map((clip) => (
                         <ExampleCard {...clip} key={clip.id} />
                     ))}
                 </Marquee>
-                <Marquee className="[--duration:55s]" reverse pauseOnHover>
+                <Marquee className="[--duration:55s]" reverse pauseOnHover repeat={2}>
                     {secondRow.map((clip) => (
                         <ExampleCard {...clip} key={clip.id} />
                     ))}

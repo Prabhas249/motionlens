@@ -22,6 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={cn("font-sans", geist.variable)} suppressHydrationWarning>
       <body>
+        {/* React hoists these into <head>: shave the GA connection handshake */}
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="preconnect" href="https://www.google-analytics.com" />
         {children}
         <Analytics />
         {/* GA4 — renders only once NEXT_PUBLIC_GA_ID (G-XXXXXXX) is set */}

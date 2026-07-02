@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { LogoIcon } from "@/components/logo";
 import {
@@ -27,7 +28,7 @@ export function AppSidebar() {
 			variant="sidebar"
 		>
 			<SidebarHeader className="h-14 justify-center border-b px-2">
-				<SidebarMenuButton render={<a href="/dashboard" />}><LogoIcon className="size-5" /><span className="font-medium text-foreground!">MotionLens</span></SidebarMenuButton>
+				<SidebarMenuButton render={<Link href="/dashboard" />}><LogoIcon className="size-5" /><span className="font-medium text-foreground!">MotionLens</span></SidebarMenuButton>
 			</SidebarHeader>
 			<SidebarContent className="overflow-hidden">
 				{navGroups.map((group, index) => (
@@ -40,7 +41,7 @@ export function AppSidebar() {
 					<SidebarMenu className="border-t p-2">
 						{footerNavLinks.map((item) => (
 							<SidebarMenuItem key={item.title}>
-								<SidebarMenuButton className="text-muted-foreground" isActive={item.isActive} size="sm" render={<a href={item.path} />}>{item.icon}<span>{item.title}</span></SidebarMenuButton>
+								<SidebarMenuButton className="text-muted-foreground" isActive={item.isActive} size="sm" render={<Link href={item.path ?? "#"} />}>{item.icon}<span>{item.title}</span></SidebarMenuButton>
 							</SidebarMenuItem>
 						))}
 					</SidebarMenu>

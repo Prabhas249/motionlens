@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { AppShell } from "@/components/app-shell"
 import { AnalysisInput } from "@/components/analysis-input"
 import {
   BlueprintView,
@@ -72,8 +71,15 @@ export default function Page() {
   }, [])
 
   // Load a saved analysis into the view — no page reload, so no flicker.
+  // Progressive: the small blueprint renders IMMEDIATELY; the multi-MB
+  // storyboard streams straight from R2 (presigned framesUrl) and fills in.
   const loadAnalysis = useCallback(async (id: string) => {
     const run = beginRun()
+    setBlueprint(null) // instant feedback: the view resets while it loads
+    setFrames([])
+    setClipUrl(null)
+    setError("")
+    setPhase("idle")
     try {
       const r = await fetch(`/api/history/${id}`, { cache: "no-store" })
       if (runRef.current !== run) return
@@ -87,13 +93,26 @@ export default function Page() {
         // analysis renders fine but must not leave the selector on a dead value
         if (data.mode === "annotated" || data.mode === "precision") setMode(data.mode as Mode)
       }
-      setFrames(Array.isArray(data.frames) ? (data.frames as Frame[]) : [])
       setClipUrl(typeof data.clipUrl === "string" ? data.clipUrl : null)
       setAnalysisId(data.id ?? id)
       setSavedCode(data.code && typeof data.code === "object" ? data.code : {})
-      setStoryboardLoading(false)
       setError("")
       setPhase("idle")
+      if (typeof data.framesUrl === "string") {
+        setStoryboardLoading(true)
+        fetch(data.framesUrl)
+          .then((fr) => (fr.ok ? fr.json() : []))
+          .then((frames) => {
+            if (runRef.current !== run) return
+            setFrames(Array.isArray(frames) ? (frames as Frame[]) : [])
+            setStoryboardLoading(false)
+          })
+          .catch(() => {
+            if (runRef.current === run) setStoryboardLoading(false)
+          })
+      } else {
+        setStoryboardLoading(false)
+      }
     } catch {
       if (runRef.current !== run) return
       setError("Couldn't open that analysis — it may have been deleted.")
@@ -261,7 +280,7 @@ export default function Page() {
   }
 
   return (
-    <AppShell>
+    <>
       {/* Cap to viewport (sticky h-14 header + content padding) so the middle scrolls
           internally and the right column stays fixed instead of the whole page scrolling. */}
       <div className="flex h-[calc(100dvh-6rem)] gap-4 md:h-[calc(100dvh-7rem)]">
@@ -314,6 +333,6 @@ export default function Page() {
           </div>
         </aside>
       </div>
-    </AppShell>
+    </>
   )
 }
