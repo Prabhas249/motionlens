@@ -6,7 +6,6 @@ import { ArrowRight, ArrowDown, Check } from "lucide-react";
 import { siteConfig } from "@marketing/lib/config";
 import { HeaderBadge } from "@marketing/components/header-badge";
 import PremiumButton from "@marketing/components/premium-button";
-import { DiaTextReveal } from "@marketing/components/ui/dia-text";
 import { MotionLensLogo } from "@marketing/components/motionlens-logo";
 import { PixelGridShader } from "@marketing/components/ui/pixelgrid-shader";
 
@@ -140,13 +139,46 @@ function BlueprintCard() {
     );
 }
 
+// CSS-only rotating headline word. All words ship in the server HTML and
+// crossfade via keyframes — no hydration dependency and no element swap, so
+// the h1 paints once and LCP stays at first paint (the JS-swap version kept
+// re-triggering Chrome's LCP entry ~10s in).
+const HERO_WORDS = ["motion", "animations", "interactions", "transitions"];
+
+function RotatingWord() {
+    return (
+        <span className="relative inline-grid justify-items-center align-bottom text-[#2A48F0]">
+            <style>{`
+                @keyframes heroWordCycle {
+                    0%, 21% { opacity: 1; filter: blur(0); transform: translateY(0); }
+                    25%, 96% { opacity: 0; filter: blur(6px); transform: translateY(4px); }
+                    100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .hero-word { animation: none !important; }
+                    .hero-word:not(:first-child) { opacity: 0 !important; }
+                }
+            `}</style>
+            {HERO_WORDS.map((w, i) => (
+                <span
+                    key={w}
+                    aria-hidden={i > 0}
+                    className="hero-word col-start-1 row-start-1"
+                    style={{
+                        opacity: i === 0 ? 1 : 0,
+                        animation: `heroWordCycle ${HERO_WORDS.length * 2.5}s linear infinite`,
+                        animationDelay: `${i * 2.5}s`,
+                    }}
+                >
+                    {w}
+                </span>
+            ))}
+        </span>
+    );
+}
+
 export function HeroSection() {
     const { hero } = siteConfig;
-    // LCP guard: the rotating word must exist at FIRST paint. Server-render it
-    // as plain text; swap in the animated version only after hydration — same
-    // pixels, so the h1 never repaints larger and LCP stays at first paint.
-    const [hydrated, setHydrated] = useState(false);
-    useEffect(() => setHydrated(true), []);
     // WebGL shader waits for idle — it's decoration, not content; its init was
     // sharing the main thread with hydration and pushing LCP out.
     const [showShader, setShowShader] = useState(false);
@@ -189,21 +221,7 @@ export function HeroSection() {
                 />
                 <h1 className="text-balance text-center text-5xl font-semibold tracking-tighter text-foreground md:text-6xl lg:text-7xl">
                     Finally, AI agents understand{" "}
-                    {hydrated ? (
-                        <DiaTextReveal
-                            text={["motion", "animations", "interactions", "transitions"]}
-                            textColor="#2A48F0"
-                            colors={["#2A48F0"]}
-                            repeat
-                            repeatDelay={1.2}
-                            duration={1.3}
-                        />
-                    ) : (
-                        <span
-                            className="inline-block align-bottom leading-[100%]"
-                            style={{ color: "#2A48F0", transform: "translateY(-2px)" }}
-                        >motion</span>
-                    )}
+                    <RotatingWord />
                 </h1>
                 <p className="mx-auto max-w-xl text-balance text-center text-lg text-muted-foreground">
                     Turn any UI animation into an agent-ready Motion Blueprint — trigger,
