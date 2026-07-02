@@ -1,4 +1,5 @@
 // Dodo Payments config + helpers (Merchant of Record).
+// Env (API key, product ids, webhook secret) synced July 2 — see /mcp-era session.
 // Test vs live is just DODO_API_BASE + the matching key/product ids.
 
 export const DODO_API_BASE =
